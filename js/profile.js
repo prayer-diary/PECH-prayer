@@ -493,29 +493,22 @@ function setupNotificationMethodHandlers() {
             
             // Then handle push notification permissions if push is selected
             if (this.value === 'push') {
-                // Check if running on Android
-                const isAndroid = /Android/.test(navigator.userAgent);
-                if (isAndroid) {
-                    // On Android, request push permissions
-                    requestNotificationPermission().then(result => {
-                        if (!result.success) {
-                            // If permission failed, revert to 'none'
-                            document.getElementById('notification-none').checked = true;
-                            updatePhoneFieldsVisibility();
-                            showNotification('Permission Required', result.error || 'Push notification permission was denied.', 'error');
-                        } else {
-                            // Update user profile with push notification method
-                            updateUserNotificationMethodToPush();
-                        }
-                    }).catch(error => {
-                        console.error('Error requesting push permission:', error);
+                // Request push permissions on all device types
+                requestNotificationPermission().then(result => {
+                    if (!result) {
+                        // If permission failed, revert to 'none'
                         document.getElementById('notification-none').checked = true;
                         updatePhoneFieldsVisibility();
-                    });
-                } else {
-                    // On non-Android devices, show a message explaining why push isn't offered
-                    showNotification('Push Notifications', 'Push notifications are only available on Android devices. Your preference has been saved for when you use an Android device.', 'info');
-                }
+                        showNotification('Permission Required', 'Push notification permission was denied.', 'error');
+                    } else {
+                        // Update user profile with push notification method
+                        updateUserNotificationMethodToPush();
+                    }
+                }).catch(error => {
+                    console.error('Error requesting push permission:', error);
+                    document.getElementById('notification-none').checked = true;
+                    updatePhoneFieldsVisibility();
+                });
             }
         });
     });
@@ -1034,7 +1027,16 @@ async function updateProfileViaEdgeFunction(data) {
     }
 }
 
-
+// Helper function to update notification method to push
+async function updateUserNotificationMethodToPush() {
+    // This function is called when push notification permission is granted
+    console.log('User granted push notification permission, updating profile');
+    
+    // We don't need to do anything here as the profile will be saved with the new method
+    // when the user clicks Save Profile
+    
+    // We could automatically save the profile here, but it's better to let the user control that
+}
 
 // Helper function to get auth token
 async function getAuthToken() {
