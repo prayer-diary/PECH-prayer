@@ -1,0 +1,1391 @@
+/* Custom CSS for Prayer Diary App - Bootstrap Morph Edition */
+
+/* Theme-aware content styling */
+.content-container {
+  /* Base styles */
+  font-family: inherit;
+}
+
+/* Light mode (default) */
+.content-container {
+  color: #212529; /* Bootstrap's default text color */
+}
+
+/* Dark mode */ 
+body.dark-mode .content-container {
+  color: #e2e2e2; /* Light text for dark mode */
+}
+
+/* Make sure links are visible in both modes */
+body.dark-mode .content-container a {
+  color: #8bb9fe; /* Lighter blue for dark mode */
+}
+
+.content-container a {
+  color: #0d6efd; /* Bootstrap's default link color */
+}
+
+:root {
+    --primary-color: #483D8B; /* DarkSlateBlue */
+    --primary-light: #6a5acd; /* SlateBlue */
+    --primary-dark: #372f6a; /* Darker DarkSlateBlue */
+    --accent-color: #ffd700; /* Gold */
+    --text-light: #ffffff;
+    --text-dark: #333333;
+    --background-light: #f8f9fa;
+}
+
+body {
+    font-family: var(--bs-body-font-family);
+    background-color: var(--background-light);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* This prevents refresh of app when scroll down is done */
+html, body {
+	overscroll-behavior-y: none;
+}
+
+/* Custom bg-primary-dark */
+.bg-primary-dark {
+    background-color: var(--primary-dark) !important;
+}
+
+/* Navigation styling */
+.navbar-prayer {
+    background-color: var(--primary-color);
+}
+
+.navbar-prayer .navbar-brand,
+.navbar-prayer .nav-link {
+    color: var(--text-light);
+}
+
+.navbar-prayer .nav-link:hover {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.navbar-prayer .nav-link.active {
+    color: var(--text-light);
+    font-weight: 500;
+}
+
+/* Refresh button styling */
+#refresh-button {
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(255, 255, 255, 0.2);
+    border: none;
+    margin-right: 10px;
+    transition: transform 0.3s ease-in-out;
+}
+
+#refresh-button:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+    transform: rotate(30deg);
+}
+
+#refresh-button:active {
+    transform: rotate(360deg);
+}
+
+#refresh-button .spinner-border {
+    width: 1rem;
+    height: 1rem;
+}
+
+@media (max-width: 576px) {
+    #refresh-button {
+        width: 28px;
+        height: 28px;
+    }
+}
+
+/* Add right padding to the auth container for better dropdown visibility */
+#auth-container {
+    padding-right: 20px;
+}
+
+/* Fix for My Details dropdown positioning */
+#auth-container .dropdown-menu {
+    right: 0;
+    left: auto;
+}
+
+.dropdown-item:active {
+    background-color: var(--primary-color);
+}
+
+/* Prayer cards - new profile-style design */
+.prayer-card {
+    height: 100%;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: none;
+    box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
+    border-radius: var(--bs-border-radius);
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+}
+
+.prayer-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.15);
+}
+
+.prayer-profile-img {
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* Increase shadow on prayer cards */
+.prayer-card {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+.prayer-card:hover {
+    box-shadow: 0 0.75rem 1.5rem rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Text wrapping around image */
+.prayer-card-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 0.75rem;
+    overflow: hidden; /* Prevent text from wrapping under the floated image */
+}
+
+.prayer-points-preview {
+    overflow: hidden; /* This creates a new block formatting context */
+}
+
+.prayer-card .card-footer {
+    background-color: rgba(0,0,0,0.02);
+    border-top: 1px solid rgba(0,0,0,0.08);
+    clear: both; /* Clear the float */
+}
+
+/* Prayer title container styling */
+.prayer-title-container {
+    border-radius: 8px;
+    position: relative;
+    overflow: hidden;
+    background-color: var(--primary-color);
+    color: white;
+    text-align: center;
+    margin-bottom: 2rem;
+    box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.prayer-title-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 100%);
+    pointer-events: none;
+}
+
+.prayer-title-container h3 {
+    margin: 0;
+    font-weight: 600;
+}
+
+/* Day badge for prayer calendar - for admin view */
+.day-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: var(--primary-color);
+    color: white;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    z-index: 10;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+/* Prayer updates */
+.update-card {
+    border-left: 4px solid var(--primary-color);
+    margin-bottom: 1.5rem;
+}
+
+.update-date {
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+/* Urgent prayers */
+.urgent-card {
+    border-left: 4px solid #dc3545;
+    margin-bottom: 1.5rem;
+}
+
+.urgent-date {
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+/* User cards in admin section */
+.user-card {
+    transition: transform 0.2s;
+}
+
+.user-card:hover {
+    transform: translateY(-3px);
+}
+
+.user-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+/* Helper classes */
+.hidden {
+    display: none !important;
+}
+
+/* Rich text editor */
+.ql-editor {
+    min-height: 200px;
+    border-radius: 0 0 var(--bs-border-radius) var(--bs-border-radius);
+}
+
+.ql-toolbar {
+    border-radius: var(--bs-border-radius) var(--bs-border-radius) 0 0;
+}
+
+/* Profile image preview */
+.profile-img-preview {
+    max-width: 100%;
+    max-height: 200px;
+    border-radius: var(--bs-border-radius);
+    box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
+}
+
+/* Custom file input */
+.custom-file-input:focus ~ .custom-file-label {
+    border-color: var(--primary-light);
+    box-shadow: 0 0 0 0.2rem rgba(72, 61, 139, 0.25);
+}
+
+/* Tabs styling */
+.nav-tabs .nav-link.active {
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.nav-tabs .nav-link:not(.active) {
+    color: #6c757d;
+}
+
+/* Toast styling */
+.toast-container {
+    z-index: 1090;
+    max-width: 450px;
+    width: 90%;
+}
+
+.toast {
+    opacity: 1 !important;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    border: none;
+    border-radius: var(--bs-border-radius);
+}
+
+.toast-header {
+    padding: 0.75rem 1rem;
+}
+
+.toast-body {
+    padding: 1rem;
+}
+
+/* Spinner animation for processing toasts */
+@keyframes spinner-border {
+    to { transform: rotate(360deg); }
+}
+
+.spin-animation {
+    display: inline-block;
+    animation: spinner-border 2s linear infinite;
+}
+
+/* Progress bar animation */
+.toast .progress-bar {
+    transition: width 5s linear;
+}
+
+/* Calendar Management */
+.calendar-days-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    max-width: 350px;
+    margin: 0 auto;
+}
+
+.calendar-day {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative; /* Added for member count positioning */
+}
+
+/* Added style for the member count */
+.calendar-day .member-count {
+    position: absolute;
+    bottom: 2px;
+    right: 4px;
+    font-size: 0.7rem;
+    color: #6c757d;
+    font-weight: normal;
+}
+
+.calendar-day:hover {
+    background-color: #e9ecef;
+}
+
+.calendar-day.selected {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.member-list {
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.member-card {
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 12px;
+    margin-bottom: 8px;
+}
+
+/* New layout styles */
+.member-top-row {
+    display: flex;
+    margin-bottom: 8px;
+}
+
+.member-badge-row {
+    margin-bottom: 8px;
+}
+
+.day-badge-inline {
+    font-size: 0.85rem;
+    padding: 0.3em 0.6em;
+}
+
+.member-bottom-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.member-img-container {
+    width: 50px;
+    margin-right: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.member-img {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.member-name-container {
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+}
+
+.member-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.month-selector {
+    width: 60%;
+    font-size: 1rem;
+    height: auto;
+    padding: 0.375rem 0.75rem;
+}
+
+.assign-user {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.95rem;
+    white-space: nowrap;
+}
+
+/* Slide-in drawer navigation for mobile */
+.nav-drawer {
+  position: fixed;
+  top: 0;
+  left: -280px; /* Start offscreen */
+  width: 280px;
+  height: 100%;
+  background-color: var(--primary-color);
+  transition: left 0.3s ease;
+  z-index: 1050;
+  overflow-y: auto;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.2);
+}
+
+.nav-drawer.open {
+  left: 0; /* Slide in */
+}
+
+.drawer-header {
+  padding: 1rem;
+  background-color: var(--primary-dark);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.drawer-header .navbar-brand {
+  margin-right: 0;
+}
+
+.drawer-close {
+  color: var(--text-light);
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.drawer-menu {
+  padding: 1rem 0;
+}
+
+.drawer-menu .nav-item {
+  width: 100%;
+}
+
+.drawer-menu .nav-link {
+  padding: 0.75rem 1.5rem;
+  color: var(--text-light);
+  display: flex;
+  align-items: center;
+}
+
+.drawer-menu .nav-link i {
+  margin-right: 0.75rem;
+  width: 24px;
+  text-align: center;
+}
+
+.drawer-menu .nav-link:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.nav-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1040;
+  display: none;
+}
+
+.nav-overlay.open {
+  display: block;
+}
+
+/* Only show drawer toggle for mobile */
+.navbar-drawer-toggle {
+  display: none; /* Hidden by default */
+  background: transparent;
+  border: none;
+  padding: 8px;
+}
+
+.navbar-drawer-toggle .hamburger-icon {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 30px;
+  height: 24px;
+}
+
+.navbar-drawer-toggle .hamburger-line {
+  width: 100%;
+  height: 3px;
+  background-color: white;
+  border-radius: 2px;
+}
+
+@media (max-width: 991.98px) {
+  .navbar-drawer-toggle {
+    display: block; /* Only show on mobile/tablet */
+  }
+  
+  /* Hide regular navbar toggler on mobile */
+  .navbar-toggler {
+    display: none;
+  }
+  
+  /* Add padding for bottom of drawer menu content */
+  .drawer-menu {
+    padding-bottom: 5rem;
+  }
+  
+  /* Admin dropdown expanded in drawer */
+  .drawer-menu .dropdown-menu {
+    position: static !important;
+    background-color: rgba(0, 0, 0, 0.2);
+    border: none;
+    padding: 0;
+    margin: 0;
+    border-radius: 0;
+    transform: none !important;
+    float: none;
+    will-change: auto;
+    display: none;
+  }
+  
+  .drawer-menu .dropdown-menu.show {
+    display: block;
+  }
+  
+  .drawer-menu .dropdown-item {
+    padding: 0.75rem 2.5rem;
+    color: var(--text-light);
+  }
+  
+  .drawer-menu .dropdown-item:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .drawer-menu .dropdown-item i {
+    margin-right: 0.75rem;
+    width: 24px;
+    text-align: center;
+  }
+  
+  .drawer-menu .dropdown-divider {
+    border-top-color: rgba(255, 255, 255, 0.1);
+    margin: 0.25rem 0;
+  }
+  
+  /* Auth container styling in drawer */
+  .drawer-menu .drawer-auth-container {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .drawer-menu .drawer-auth-container .dropdown {
+    width: 100%;
+  }
+  
+  .drawer-menu .drawer-auth-container .nav-link {
+    width: 100%;
+    padding: 0.75rem 1.5rem;
+  }
+}
+
+/* Topic Card Styling */
+.topic-card {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+    background-color: #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    transition: all 0.2s ease;
+}
+
+.topic-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+.topic-top-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.topic-img-container {
+    width: 50px;
+    height: 50px;
+    margin-right: 15px;
+    flex-shrink: 0;
+}
+
+.topic-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.topic-title-container {
+    flex-grow: 1;
+}
+
+.topic-title {
+    font-weight: bold;
+    font-size: 1rem;
+}
+
+.topic-badge-row {
+    margin-bottom: 10px;
+}
+
+.topic-bottom-row {
+    display: flex;
+    gap: 10px;
+}
+
+.topic-bottom-row .form-select {
+    flex-grow: 1;
+}
+
+.topic-img-preview {
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+}
+
+.topic-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* Fix for calendar days grid in the Topics tab */
+#other-content .calendar-days-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+    margin-bottom: 15px;
+}
+
+#other-content .calendar-day {
+	aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+ }
+
+#other-content .calendar-day:hover {
+    background-color: #e9ecef;
+}
+
+#other-content .calendar-day.selected {
+    background-color: #483D8B;
+    color: white;
+}
+
+/* Prayer divider styling */
+.divider {
+    border-top: 2px solid #483D8B;
+    margin: 20px 0;
+    opacity: 0.5;
+}
+
+/* Hide divider on larger screens */
+@media (min-width: 992px) {
+    .divider {
+        display: none;
+    }
+}
+
+/* For screens smaller than 768px */
+@media (max-width: 767.98px) {
+    .card-title {
+        font-size: 1.1rem;
+    }
+    
+    /* Adjust floated image for smaller screens */
+    .prayer-card .card-body [style*="float: left"] {
+        width: 90px !important;
+        margin-bottom: 5px;
+    }
+    
+    .prayer-card-title {
+        font-size: 1.1rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .container {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
+    
+    .toast-container {
+        max-width: 300px;
+    }
+    
+    .calendar-days-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+    
+    .member-img {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .member-img-container {
+        width: 40px;
+    }
+    
+    .member-name {
+        font-size: 0.85rem;
+    }
+    
+    .month-selector {
+        width: 58%;
+        font-size: 0.95rem;
+    }
+    
+    .assign-user {
+        padding: 0.375rem 0.6rem;
+        font-size: 0.9rem;
+    }
+}
+/* Custom styling for buttons */
+#save-only-btn {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+}
+
+#save-only-btn:hover {
+    background-color: var(--primary-dark);
+    border-color: var(--primary-dark);
+}
+
+#save-only-btn:disabled {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    opacity: 0.65;
+}
+
+/* Add these styles to the end of your style.css file */
+
+/* Style for selected update and urgent prayer items in the list */
+.update-list-item, .previous-update-item, .urgent-list-item {
+    transition: background-color 0.2s ease;
+    cursor: pointer;
+}
+
+.update-list-item.selected, .previous-update-item.selected, .urgent-list-item.selected {
+    background-color: #f0f4ff; /* Light blue background for selected item */
+    border-left: 3px solid #483D8B; /* Left border in primary color */
+}
+
+.previous-update-item:hover {
+    background-color: #f8f9fa;
+}
+
+/* Improved layout for update list header on mobile */
+@media (max-width: 767.98px) {
+    .card-header .d-flex {
+        flex-direction: column;
+        align-items: flex-start !important;
+    }
+    
+    .card-header .d-flex .btn-group,
+    .card-header .d-flex div {
+        margin-top: 10px;
+        width: 100%;
+    }
+    
+    .card-header .d-flex div .btn {
+        width: 100%;
+        margin-bottom: 5px;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+}
+
+/* Print Calendar Styles */
+/* Print layout for A5 pages */
+.print-page {
+    width: 148mm; /* A5 width */
+    height: 210mm; /* A5 height */
+    padding: 10mm;
+    margin: 0 auto 20px auto;
+    border: 1px solid #ddd;
+    background-color: white;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    page-break-after: always;
+    position: relative;
+}
+
+.print-page.landscape {
+    width: 210mm; /* A5 height */
+    height: 148mm; /* A5 width */
+}
+
+.print-prayer-card {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 5mm;
+    padding-bottom: 5mm;
+    border-bottom: 1px dashed #ccc;
+}
+
+.print-prayer-card:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.print-card-header {
+    margin-bottom: 3mm;
+}
+
+.print-name {
+    font-size: 14pt;
+    font-weight: bold;
+    margin: 0;
+    color: var(--primary-color);
+}
+
+.print-card-body {
+    display: flex;
+}
+
+.print-image-container {
+    width: 25mm;
+    margin-right: 5mm;
+}
+
+.print-profile-image {
+    width: 100%;
+    border-radius: 3mm;
+    border: 1px solid #eee;
+}
+
+.print-prayer-points {
+    flex: 1;
+    font-size: 10pt;
+}
+
+.print-prayer-points p {
+    margin-bottom: 0.5rem;
+}
+
+.print-footer {
+    position: absolute;
+    bottom: 5mm;
+    left: 10mm;
+    right: 10mm;
+    text-align: center;
+    font-size: 8pt;
+    color: #999;
+}
+
+.print-date {
+    font-style: italic;
+    color: #666;
+    font-size: 9pt;
+    margin-bottom: 1mm;
+}
+
+/* Print media styles */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    
+    #print-container, #print-container * {
+        visibility: visible;
+    }
+    
+    #print-container {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+    
+    .print-page {
+        border: none;
+        box-shadow: none;
+        margin: 0;
+    }
+}
+/* Splash Screen Styles */
+.splash-screen-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #483D8B; /* Primary app color */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10000; /* Ensure it's above everything */
+    opacity: 1;
+    transition: opacity 0.5s ease-in-out;
+}
+
+.splash-screen-container.fade-out {
+    opacity: 0;
+}
+
+.splash-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    height: 100%;
+    max-width: 80%;
+    padding: 2rem;
+}
+
+.splash-logo {
+    width: 120px;
+    height: auto;
+    margin-bottom: 1.5rem;
+    filter: drop-shadow(0px 4px 8px rgba(0, 0, 0, 0.3));
+}
+
+.splash-title {
+    color: white;
+    font-size: 2rem;
+    font-weight: 600;
+    margin-bottom: 2rem;
+    text-shadow: 0px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.splash-verse {
+    color: rgba(255, 255, 255, 0.9);
+    font-style: italic;
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+    max-width: 600px;
+}
+
+.splash-verse-ref {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.9rem;
+    margin-bottom: 2rem;
+}
+
+.splash-loading {
+    margin-top: 1.5rem;
+}
+
+.splash-footer {
+    padding: 1rem;
+    width: 100%;
+    text-align: center;
+}
+
+.splash-version {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.8rem;
+    margin: 0;
+}
+
+/* Media Queries for Responsive Design */
+@media (max-width: 576px) {
+    .splash-logo {
+        width: 90px;
+    }
+    
+    .splash-title {
+        font-size: 1.6rem;
+    }
+    
+    .splash-verse {
+        font-size: 0.9rem;
+    }
+}
+
+/* Ensure the app is hidden while splash screen is showing */
+#landing-view.splash-active,
+#app-views.splash-active {
+    display: none !important;
+}
+
+/* Add these styles to the end of your style.css file */
+
+/* Make profile image buttons the same width */
+#select-profile-image,
+#take-profile-photo {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+}
+
+/* Style for the camera icon buttons */
+#switch-camera-btn {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+#timer-photo-btn {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+/* Make capture button same size as cancel button */
+#capture-photo-btn {
+    min-width: 80px;
+}
+
+/* Make the profile image buttons container flexible */
+.profile-image-buttons-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+/* On small screens, make buttons stack */
+@media (max-width: 420px) {
+    #select-profile-image,
+    #take-profile-photo {
+        flex: 100%;
+        margin-left: 0 !important;
+        margin-top: 0.5rem;
+    }
+    
+    .profile-image-buttons-container {
+        flex-direction: column;
+    }
+}
+/* Styles for clickable date */
+.clickable-date {
+    cursor: pointer;
+    padding-right: 20px;
+    position: relative;
+    display: inline-block;
+}
+
+.clickable-date:hover {
+    color: #e0e0e0;
+}
+
+.clickable-date:after {
+    content: "\F4CA";  /* Calendar icon from Bootstrap Icons */
+    font-family: "bootstrap-icons";
+    font-size: 0.8em;
+    margin-left: 5px;
+    position: absolute;
+    top: 2px;
+}
+
+/* Updated modal styles for date picker */
+#date-picker-modal .modal-header {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+#date-picker-modal .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+#date-picker-modal .modal-footer {
+    justify-content: space-between;
+}
+
+/* Make the date input larger and more visible */
+#test-date {
+    font-size: 1.1rem;
+    padding: 0.5rem;
+    border-radius: 0.375rem;
+    text-align: center;
+}
+
+/* Dark Mode Styles */
+body.dark-mode {
+    background-color: #121212;
+    color: #e0e0e0;
+}
+
+/* Dark mode overrides for various elements */
+body.dark-mode .navbar-prayer {
+    background-color: #343a40;
+}
+
+body.dark-mode .card {
+    background-color: #2d2d2d;
+    border-color: #444;
+    color: #e0e0e0;
+}
+
+body.dark-mode .card-header {
+    background-color: #343a40;
+    border-bottom-color: #444;
+}
+
+body.dark-mode .card-footer {
+    background-color: #262626;
+    border-top-color: #444;
+}
+
+body.dark-mode .modal-content {
+    background-color: #2d2d2d;
+    color: #e0e0e0;
+}
+
+body.dark-mode .modal-header,
+body.dark-mode .modal-footer {
+    border-color: #444;
+}
+
+body.dark-mode .form-control,
+body.dark-mode .form-select {
+    background-color: #333;
+    border-color: #555;
+    color: #e0e0e0;
+}
+
+body.dark-mode .form-control:focus,
+body.dark-mode .form-select:focus {
+    background-color: #3a3a3a;
+    color: #fff;
+}
+
+body.dark-mode .dropdown-menu {
+    background-color: #2d2d2d;
+    border-color: #444;
+}
+
+body.dark-mode .dropdown-item {
+    color: #e0e0e0;
+}
+
+body.dark-mode .dropdown-item:hover {
+    background-color: #3d3d3d;
+}
+
+body.dark-mode .text-muted {
+    color: #aaa !important;
+}
+
+body.dark-mode .btn-light {
+    background-color: #555;
+    border-color: #666;
+    color: #e0e0e0;
+}
+
+body.dark-mode .table {
+    color: #e0e0e0;
+}
+
+body.dark-mode hr {
+    border-color: #555;
+}
+
+body.dark-mode .prayer-card {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.4) !important;
+}
+
+body.dark-mode .prayer-card:hover {
+    box-shadow: 0 0.75rem 1.5rem rgba(0, 0, 0, 0.5) !important;
+}
+
+body.dark-mode .prayer-card-title {
+    color: #a095e9; /* Lighter version of primary color for dark mode */
+}
+
+body.dark-mode .alert-info {
+    background-color: #264653;
+    color: #e0e0e0;
+    border-color: #1d3a4c;
+}
+
+body.dark-mode .alert-success {
+    background-color: #2a9d8f;
+    color: #fff;
+    border-color: #268980;
+}
+
+body.dark-mode .alert-warning {
+    background-color: #e9c46a;
+    color: #333;
+    border-color: #e6b74e;
+}
+
+body.dark-mode .alert-danger {
+    background-color: #e76f51;
+    color: #fff;
+    border-color: #e45d3d;
+}
+
+/* Photo Size Styles - Override existing styles */
+/* Default (Large Photo) - overriding default floated image */
+.prayer-card .card-body [style*="float: left"] {
+    width: 100% !important;
+    float: none !important;
+    margin-right: 0 !important;
+    margin-bottom: 15px !important;
+}
+
+/* Small Photo Layout (side-by-side) */
+body.small-photo .prayer-card .card-body [style*="float: left"] {
+    width: 120px !important;
+    float: left !important;
+    margin-right: 15px !important;
+    margin-bottom: 0 !important;
+}
+
+/* PWA Installation Message Styles */
+.install-success-message {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.85);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.install-message-content {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    max-width: 90%;
+    width: 350px;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.install-message-content h3 {
+    color: #483D8B;
+    margin-bottom: 15px;
+}
+
+.install-message-content p {
+    margin-bottom: 15px;
+}
+
+.install-message-content button {
+    background-color: #483D8B;
+    border-color: #483D8B;
+    margin-top: 10px;
+}
+
+.custom-install-button {
+    margin-left: 8px;
+    white-space: nowrap;
+}
+/* CSS Styling for Person Search Functionality */
+
+/* Style the person search results */
+#person-search-results {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid rgba(0,0,0,0.125);
+    border-radius: 0.25rem;
+}
+
+/* Style the person result items */
+.person-result {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.person-result:hover {
+    background-color: rgba(72, 61, 139, 0.1);
+}
+
+/* Style the person result item images */
+.person-result img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Add some animation for the search spinner */
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+#search-spinner {
+    animation: pulse 1.5s infinite ease-in-out;
+}
+
+/* Style the tabs */
+#date-picker-tabs .nav-link {
+    color: #6c757d;
+}
+
+#date-picker-tabs .nav-link.active {
+    color: #483D8B;
+    font-weight: 500;
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 576px) {
+    #person-search-results {
+        max-height: 200px;
+    }
+    
+    .person-result .fw-bold {
+        font-size: 0.95rem;
+    }
+    
+    .person-result .text-muted.small {
+        font-size: 0.8rem;
+    }
+}

@@ -1,0 +1,187 @@
+/* Bootstrap Morph Theme */
+:root {
+  --bs-primary: #483D8B;
+  --bs-primary-rgb: 72, 61, 139;
+  --bs-primary-text-emphasis: #381F75;
+  --bs-primary-bg-subtle: #E8E6F3;
+  --bs-primary-border-subtle: #CECBDE;
+  
+  --bs-secondary: #6c757d;
+  --bs-secondary-rgb: 108, 117, 125;
+  
+  --bs-success: #28a745;
+  --bs-success-rgb: 40, 167, 69;
+  
+  --bs-info: #17a2b8;
+  --bs-info-rgb: 23, 162, 184;
+  
+  --bs-warning: #ffc107;
+  --bs-warning-rgb: 255, 193, 7;
+  
+  --bs-danger: #dc3545;
+  --bs-danger-rgb: 220, 53, 69;
+  
+  --bs-light: #f8f9fa;
+  --bs-light-rgb: 248, 249, 250;
+  
+  --bs-dark: #212529;
+  --bs-dark-rgb: 33, 37, 41;
+  
+  --bs-body-font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", "Liberation Sans", Arial, sans-serif;
+  --bs-body-font-size: 1rem;
+  --bs-body-font-weight: 400;
+  --bs-body-line-height: 1.5;
+  --bs-body-color: #212529;
+  --bs-body-color-rgb: 33, 37, 41;
+  --bs-body-bg: #fff;
+  --bs-body-bg-rgb: 255, 255, 255;
+  
+  --bs-border-radius: 0.5rem;
+  --bs-border-radius-sm: 0.4rem;
+  --bs-border-radius-lg: 0.6rem;
+  --bs-border-radius-xl: 1rem;
+  --bs-border-radius-xxl: 2rem;
+  --bs-border-radius-pill: 50rem;
+  
+  --bs-box-shadow: 0 0.25rem 0.75rem rgba(33, 37, 41, 0.15);
+  --bs-box-shadow-sm: 0 0.125rem 0.375rem rgba(33, 37, 41, 0.1);
+  --bs-box-shadow-lg: 0 0.5rem 1.5rem rgba(33, 37, 41, 0.2);
+}
+
+/* Morph Style Cards */
+.card {
+  border-radius: var(--bs-border-radius);
+  box-shadow: var(--bs-box-shadow);
+  border: none;
+  overflow: hidden;
+}
+
+.card-header {
+  background-color: rgba(var(--bs-primary-rgb), 0.05);
+  border-bottom: 1px solid rgba(var(--bs-primary-rgb), 0.1);
+}
+
+.card-footer {
+  background-color: rgba(var(--bs-primary-rgb), 0.05);
+  border-top: 1px solid rgba(var(--bs-primary-rgb), 0.1);
+}
+
+/* Morph Style Buttons */
+.btn {
+  border-radius: var(--bs-border-radius);
+  padding: 0.5rem 1.25rem;
+  font-weight: 500;
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-primary {
+  background-color: var(--bs-primary);
+  border-color: var(--bs-primary);
+}
+
+.btn-primary:hover, .btn-primary:focus {
+  background-color: rgba(var(--bs-primary-rgb), 0.9);
+  border-color: rgba(var(--bs-primary-rgb), 0.9);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(var(--bs-primary-rgb), 0.3);
+}
+
+.btn-outline-primary {
+  color: var(--bs-primary);
+  border-color: var(--bs-primary);
+}
+
+.btn-outline-primary:hover, .btn-outline-primary:focus {
+  background-color: var(--bs-primary);
+  border-color: var(--bs-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(var(--bs-primary-rgb), 0.3);
+}
+
+/* Morph Style Forms */
+.form-control, .form-select {
+  border-radius: var(--bs-border-radius);
+  padding: 0.5rem 1rem;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease-in-out;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: rgba(var(--bs-primary-rgb), 0.5);
+  box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25);
+}
+
+/* Morph Style Navbar */
+.navbar-dark {
+  background-color: var(--bs-primary) !important;
+}
+
+.navbar-brand {
+  font-weight: 600;
+}
+
+.navbar-toggler {
+  border-radius: var(--bs-border-radius);
+}
+
+/* Morph Style Tab Navigation */
+.nav-tabs .nav-link {
+  border-radius: var(--bs-border-radius) var(--bs-border-radius) 0 0;
+  padding: 0.75rem 1.25rem;
+  font-weight: 500;
+  color: var(--bs-secondary);
+}
+
+.nav-tabs .nav-link.active, .nav-tabs .nav-item.show .nav-link {
+  color: var(--bs-primary);
+  background-color: #fff;
+  border-color: #dee2e6 #dee2e6 #fff;
+  border-bottom: 2px solid var(--bs-primary);
+}
+
+/* Morph Style Modal */
+.modal-content {
+  border-radius: var(--bs-border-radius);
+  border: none;
+  box-shadow: var(--bs-box-shadow-lg);
+}
+
+.modal-header {
+  border-bottom: 1px solid rgba(var(--bs-primary-rgb), 0.1);
+  border-top-left-radius: var(--bs-border-radius);
+  border-top-right-radius: var(--bs-border-radius);
+}
+
+.modal-footer {
+  border-top: 1px solid rgba(var(--bs-primary-rgb), 0.1);
+  border-bottom-left-radius: var(--bs-border-radius);
+  border-bottom-right-radius: var(--bs-border-radius);
+}
+
+/* Morph Style Alerts */
+.alert {
+  border-radius: var(--bs-border-radius);
+  border: none;
+  box-shadow: var(--bs-box-shadow-sm);
+}
+
+/* Custom Styles for Prayer Diary App */
+.prayer-card {
+  height: 100%;
+  transition: transform 0.2s;
+}
+
+.prayer-card:hover {
+  transform: translateY(-5px);
+}
+
+.prayer-card-img {
+  height: 200px;
+  object-fit: cover;
+}
+
+.profile-image-preview {
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: var(--bs-border-radius);
+}

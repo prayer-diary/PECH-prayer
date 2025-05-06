@@ -1,0 +1,2035 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+    <meta name="theme-color" content="#483D8B">
+    <meta name="application-name" content="PECH Prayer">
+    <meta name="description" content="A prayer calendar and updates app for church members">
+    <title>Prayer Diary</title>
+    
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Apple (iOS) icons -->
+    <link rel="apple-touch-icon" href="img/icons/ios/180.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="img/icons/ios/180.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="img/icons/ios/152.png">
+    <link rel="apple-touch-icon" sizes="167x167" href="img/icons/ios/167.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="img/icons/ios/120.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="img/icons/ios/114.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="img/icons/ios/76.png">
+    <link rel="apple-touch-icon" sizes="60x60" href="img/icons/ios/60.png">
+    
+    <!-- Standard favicons -->
+    <link rel="icon" type="image/svg+xml" href="img/icons/icon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="img/icons/ios/32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="img/icons/ios/16.png">
+    
+    <!-- Microsoft Windows tiles -->
+    <meta name="msapplication-TileColor" content="#483D8B">
+    <meta name="msapplication-TileImage" content="img/icons/windows11/Square150x150Logo.scale-100.png">
+    <meta name="msapplication-square70x70logo" content="img/icons/windows11/SmallTile.scale-100.png">
+    <meta name="msapplication-square150x150logo" content="img/icons/windows11/Square150x150Logo.scale-100.png">
+    <meta name="msapplication-wide310x150logo" content="img/icons/windows11/Wide310x150Logo.scale-100.png">
+    <meta name="msapplication-square310x310logo" content="img/icons/windows11/LargeTile.scale-100.png">
+    
+    <!-- Bootstrap Morph Theme -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Bootstrap Morph Theme CSS -->
+    <link rel="stylesheet" href="css/bootstrap-morph.min.css">
+    <!-- Rich Text Editor CSS (Quill) -->
+ 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" />
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css?v=dev">
+
+    <!-- Web Push Notifications Permission Prompt Styles -->
+    <style>
+        .notification-permission-prompt {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1050;
+            width: 350px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            padding: 16px;
+            transition: all 0.3s ease;
+            transform: translateY(100px);
+            opacity: 0;
+            border-left: 4px solid #483D8B;
+        }
+        .notification-permission-prompt.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        .notification-permission-prompt h5 {
+            margin-top: 0;
+            color: #483D8B;
+        }
+        .notification-permission-prompt .actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 12px;
+        }
+        .notification-permission-prompt .actions button {
+            margin-left: 8px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Splash Screen HTML -->
+    <div id="splash-screen" class="splash-screen-container">
+        <div class="splash-content">
+            <img src="img/logo.png" alt="PECH Prayer Diary Logo" class="splash-logo">
+            <h1 class="splash-title">PECH Prayer Diary</h1>
+            <p class="splash-verse">"Let us then with confidence draw near to the throne of grace, that we may receive mercy and find grace to help in time of need."</p>
+            <p class="splash-verse-ref">Hebrews 4:16</p>
+            <div class="splash-loading">
+                <div class="spinner-border text-light" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        </div>
+        <div class="splash-footer">
+            <p class="splash-version">Version <span id="splash-version-number"></span></p>
+        </div>
+    </div>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-prayer sticky-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="index.html">
+                <img src="img/logo.png" alt="Prayer Diary Logo" width="50" height="28" class="d-inline-block align-text-top me-2">
+                PECH Prayer
+            </a>
+            
+            <div class="ms-2 d-flex">
+              <button id="refresh-button" class="btn btn-sm btn-secondary" title="Refresh Application">
+                <i class="bi bi-arrow-clockwise"></i>
+              </button>
+            </div>
+ 
+            <div class="d-flex d-lg-none order-lg-last">
+                <!-- Drawer toggle button positioned on the right for mobile only -->
+                <button class="navbar-drawer-toggle" type="button" aria-label="Toggle navigation drawer">
+                    <div class="hamburger-icon">
+                        <span class="hamburger-line"></span>
+                        <span class="hamburger-line"></span>
+                        <span class="hamburger-line"></span>
+                    </div>
+                </button>
+            </div>
+            
+            <div class="collapse navbar-collapse" id="navbarBasic">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link" id="nav-calendar" href="#">
+                            <i class="bi bi-calendar-day"></i> Daily Prayer
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="nav-updates" href="#">
+                            <i class="bi bi-newspaper"></i> Prayer Updates
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="nav-urgent" href="#">
+                            <i class="bi bi-exclamation-circle"></i> Urgent Prayers
+                        </a>
+                    </li>
+                    <li class="nav-item dropdown editor-only hidden">
+                        <a class="nav-link dropdown-toggle" href="#" id="editDropdown" role="button" 
+                           data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-pencil"></i> Edit Content
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="editDropdown">
+                            <li class="calendar-editor-only hidden">
+                                <a class="dropdown-item" id="nav-manage-calendar" href="#">
+                                    <i class="bi bi-calendar"></i> Manage Prayer Calendar
+                                </a>
+                            </li>
+                            <li class="update-editor-only hidden">
+                                <a class="dropdown-item" id="nav-manage-updates" href="#">
+                                    <i class="bi bi-pencil-square"></i> Manage Prayer Updates
+                                </a>
+                            </li>
+                            <li class="urgent-editor-only hidden">
+                                <a class="dropdown-item" id="nav-manage-urgent" href="#">
+                                    <i class="bi bi-bell"></i> Manage Urgent Prayers
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    <li class="nav-item dropdown admin-only hidden">
+                        <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" 
+                           data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-gear"></i> Admin
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="adminDropdown">
+                            <li>
+                                <a class="dropdown-item" id="nav-manage-users" href="#">
+                                    <i class="bi bi-people"></i> Manage Users
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" id="nav-register-email-user" href="#">
+                                    <i class="bi bi-envelope-plus"></i> Register Email-only User
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item" id="nav-test-email" href="#">
+                                    <i class="bi bi-envelope"></i> Test Email Sending
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item" id="nav-print-calendar" href="#">
+                                    <i class="bi bi-printer"></i> Print Prayer Diary
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+                
+                <div class="d-flex" id="auth-container">
+                    <div class="logged-out hidden">
+                        <!-- Sign up button removed -->
+                    </div>
+                    <div class="d-flex align-items-center logged-in hidden">
+                        <div class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="myDetailsDropdown" role="button" 
+                               data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-person-circle"></i> My Details
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="myDetailsDropdown">
+                                <li>
+                                    <a class="dropdown-item" id="nav-profile" href="#">
+                                        <i class="bi bi-person"></i> My Profile
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" id="nav-preferences" href="#">
+                                        <i class="bi bi-sliders"></i> My Preferences
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" id="nav-change-password" href="#">
+                                        <i class="bi bi-key"></i> Change my Password
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <button class="dropdown-item" id="btn-logout" type="button">
+                                        <i class="bi bi-box-arrow-right"></i> Log out
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main content -->
+    <div class="container mt-4 mb-5">
+        <!-- Landing page view (hidden but retained for status messages) -->
+        <div id="landing-view" class="d-none">
+            <div class="row justify-content-center">
+                <div class="col-md-10 col-lg-8">
+                    <div id="auth-status-message" class="mt-5 text-center">
+                        <!-- Status messages will appear here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main app views - each will be shown/hidden as needed -->
+        <div id="app-views" class="d-none">
+            <!-- Prayer Calendar View -->
+            <div id="calendar-view" class="view-content">
+                <h2 class="fw-bold mb-4" id="daily-prayer-title">Daily prayer for <span id="current-date">Today</span></h2>
+                <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" id="prayer-cards-container">
+                    <!-- Prayer cards will be dynamically inserted here -->
+                </div>
+            </div>
+            
+			<div class="modal fade" id="date-picker-modal" tabindex="-1" aria-labelledby="date-picker-title" aria-hidden="true">
+				<div class="modal-dialog modal-dialog-centered">
+					<div class="modal-content">
+						<div class="modal-header">
+							<h5 class="modal-title" id="date-picker-title">Select Prayer Date</h5>
+							<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+						</div>
+						<div class="modal-body">
+							<!-- Add tabs for date/person selection -->
+							<ul class="nav nav-tabs mb-3" id="date-picker-tabs" role="tablist">
+								<li class="nav-item" role="presentation">
+									<button class="nav-link active" id="date-tab" data-bs-toggle="tab" 
+											data-bs-target="#date-content" type="button" role="tab" 
+											aria-controls="date-content" aria-selected="true">By Date</button>
+								</li>
+								<li class="nav-item" role="presentation">
+									<button class="nav-link" id="person-tab" data-bs-toggle="tab" 
+											data-bs-target="#person-content" type="button" role="tab" 
+											aria-controls="person-content" aria-selected="false">By Person</button>
+								</li>
+							</ul>
+							
+							<div class="tab-content" id="datePickerTabContent">
+								<!-- Date selection tab -->
+								<div class="tab-pane fade show active" id="date-content" role="tabpanel" aria-labelledby="date-tab">
+									<div class="mb-3">
+										<label for="test-date" class="form-label">Select date to view prayers for:</label>
+										<input type="date" class="form-control" id="test-date">
+									</div>
+									<p class="text-muted small">Select any date to view the prayer content assigned for that day.</p>
+								</div>
+								
+								<!-- Person search tab -->
+								<div class="tab-pane fade" id="person-content" role="tabpanel" aria-labelledby="person-tab">
+									<div class="mb-3">
+										<label for="person-search" class="form-label">Search for a person:</label>
+										<div class="input-group">
+											<input type="text" class="form-control" id="person-search" placeholder="Enter name...">
+											<button class="btn btn-outline-secondary" type="button" id="search-person-btn">
+												<i class="bi bi-search"></i>
+											</button>
+										</div>
+									</div>
+									
+									<div id="search-results-container" class="mb-3">
+										<!-- Search results will be dynamically inserted here -->
+										<p class="text-muted small" id="search-instructions">Enter a name to search for a person in the prayer calendar.</p>
+										<div id="person-search-results" class="list-group d-none">
+											<!-- Search results will go here -->
+										</div>
+										<div id="search-spinner" class="text-center d-none">
+											<div class="spinner-border spinner-border-sm text-primary" role="status">
+												<span class="visually-hidden">Loading...</span>
+											</div>
+											<span class="ms-2">Searching...</span>
+										</div>
+										<div id="no-results-message" class="alert alert-info mt-2 d-none">
+											No matching people found. Try a different search term.
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="modal-footer">
+							<button type="button" class="btn btn-secondary" id="reset-test-date">Return to Today</button>
+							<button type="button" class="btn btn-primary" id="set-test-date">View Prayers</button>
+						</div>
+					</div>
+				</div>
+			</div>
+
+            <!-- Prayer Updates View -->
+            <div id="updates-view" class="view-content d-none">
+                <h2 class="fw-bold mb-4">Prayer Updates</h2>
+                <ul class="nav nav-tabs mb-4" id="updatesTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="current-updates-tab" data-bs-toggle="tab" 
+                                data-bs-target="#current-updates" type="button" role="tab" 
+                                aria-controls="current-updates" aria-selected="true">Latest</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="archived-updates-tab" data-bs-toggle="tab" 
+                                data-bs-target="#archived-updates" type="button" role="tab" 
+                                aria-controls="archived-updates" aria-selected="false">Previous</button>
+                    </li>
+                </ul>
+                <div class="tab-content" id="updatesTabContent">
+                    <div class="tab-pane fade show active" id="current-updates" role="tabpanel" 
+                         aria-labelledby="current-updates-tab">
+                        <div id="updates-container">
+                            <!-- Prayer updates will be dynamically inserted here -->
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="archived-updates" role="tabpanel" 
+                         aria-labelledby="archived-updates-tab">
+                        <div class="mb-3">
+                            <button id="open-selected-update" class="btn btn-primary" disabled>
+                                <i class="bi bi-eye"></i> Open
+                            </button>
+                        </div>
+                        <div id="archived-updates-container">
+                            <!-- Archived prayer updates will be dynamically inserted here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Urgent Prayers View -->
+            <div id="urgent-view" class="view-content d-none">
+                <h1 class="display-6 mb-4">Urgent Prayer Requests</h1>
+                <div id="urgent-prayers-container">
+                    <!-- Urgent prayer requests will be dynamically inserted here -->
+                </div>
+            </div>
+
+            <!-- User Profile View -->
+            <div id="profile-view" class="view-content d-none">
+                <h1 class="display-6 mb-4">My Profile</h1>
+                <div class="row">
+                    <div class="col-md-6 mb-4">
+                        <div class="card shadow">
+                            <div class="card-body">
+                                <form id="profile-form">
+                                    <div class="mb-3">
+                                        <label for="profile-name" class="form-label">Full Name</label>
+                                        <input type="text" class="form-control" id="profile-name" placeholder="Your full name" readonly>
+                                        <div class="form-text text-muted">Your name is set during registration and cannot be changed.</div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="profile-photo-tag" class="form-label">Photo Tag</label>
+                                        <input type="text" class="form-control" id="profile-photo-tag" placeholder="Names of people in photo">
+                                        <div class="form-text text-muted">Enter names to be shown under your profile picture on prayer cards (defaults to your name). For couple/family photos, enter all names here.</div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="profile-image" class="form-label">Profile Picture</label>
+                                        <div class="d-flex align-items-center mb-2">
+                                            <div class="me-3">
+                                                <img id="profile-image-preview" class="profile-img-preview border rounded" 
+                                                     src="img/placeholder-profile.png" alt="Profile preview" 
+                                                     style="width: 80px; height: 80px; object-fit: cover;">
+                                            </div>
+                                            <div>
+                                                <button type="button" class="btn btn-outline-primary" id="select-profile-image">
+                                                    <i class="bi bi-camera me-1"></i> Change Picture
+                                                </button>
+                                                <input type="file" class="d-none" id="profile-image" accept="image/*">
+                                            </div>
+                                        </div>
+                                        <div class="form-check mt-2">
+                                            <input class="form-check-input" type="checkbox" id="profile-calendar-hide">
+                                            <label class="form-check-label" for="profile-calendar-hide">
+                                                Do not list in Calendar
+                                            </label>
+                                            <div class="form-text text-muted">If another family member has already registered with a family photo, check this box to prevent a second listing in the daily prayer calendar. Or check it if you do not want to be included in the calendar for any other reason.</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="profile-prayer-points" class="form-label">Prayer Points</label>
+                                        <textarea class="form-control" id="profile-prayer-points" rows="4" 
+                                                  placeholder="Enter prayer points to share with the church family"></textarea>
+                                    </div>
+                                    
+                                    <div class="mb-4">
+                                    <label class="form-label fw-bold">Notification Preferences</label>
+                                    
+                                    <div class="card mb-3 bg-light">
+                                    <div class="card-body">
+                                    <h6 class="card-subtitle mb-2">Content Delivery</h6>
+                                    <p class="text-muted small mb-2">How would you like to receive prayer updates and urgent prayer requests?</p>
+                                    
+                                    <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="content-delivery" id="content-app-only" value="app-only">
+                                    <label class="form-check-label" for="content-app-only">App only (no email)</label>
+                                    </div>
+                                    <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="content-delivery" id="content-app-email" value="app-email" checked>
+                                    <label class="form-check-label" for="content-app-email">App plus email</label>
+                                    </div>
+                                    </div>
+                                    </div>
+                                    
+                                    <div class="card bg-light">
+                                    <div class="card-body">
+                                    <h6 class="card-subtitle mb-2">Notification Method</h6>
+                                    <p class="text-muted small mb-2">How would you like to be notified when new prayer updates or urgent prayer requests are available?</p>
+                                    
+                                        <div class="form-check">
+                                                <input class="form-check-input" type="radio" name="notification-method" id="notification-push" value="push">
+                                                <label class="form-check-label" for="notification-push">Push notification</label>
+                                            </div>
+                                        <div class="form-check">
+                                                <input class="form-check-input" type="radio" name="notification-method" id="notification-none" value="none" checked>
+                                                <label class="form-check-label" for="notification-none">No notification</label>
+                                            </div>
+                                        <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="notification-method" id="notification-sms" value="sms">
+                                        <label class="form-check-label" for="notification-sms">SMS text message</label>
+                                    </div>
+                                    <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="notification-method" id="notification-whatsapp" value="whatsapp">
+                                    <label class="form-check-label" for="notification-whatsapp">WhatsApp message</label>
+                                    </div>
+                                    </div>
+                                    </div>
+                                    
+                                    
+                                    </div>
+                                    
+                                    <!-- Phone Number Section (conditionally displayed) -->
+                                    <div id="phone-number-section" class="mb-3">
+                                    <div class="card bg-light">
+                                    <div class="card-body">
+                                            <h6 class="card-subtitle mb-3">Mobile Number</h6>
+                                            
+                                            <!-- Single Phone Number Field - Only shown when SMS or WhatsApp is selected -->
+                                            <div id="mobile-number-container" class="mb-3 d-none">
+                                            <label for="profile-mobile" class="form-label">Mobile Phone Number <span class="text-danger">*</span></label>
+                                                <input type="tel" class="form-control" id="profile-mobile" placeholder="E.g., 07123456789">
+                                                    <div class="form-text small">Enter your full 11-digit UK mobile number (starting with 0)</div>
+                                                    <div class="invalid-feedback">Mobile number is required for notifications</div>
+                                                </div>
+                                                
+                                            <div id="no-phone-needed-message">
+                                            <p class="text-muted small mb-0">
+                                            <i class="bi bi-info-circle me-1"></i>
+                                            Select SMS or WhatsApp notification method above to enter your mobile number.
+                                        </p>
+                                    </div>
+                                    </div>
+                                    </div>
+                                    </div>
+                                    
+                                        <div class="mb-4">
+                                        <h5 class="card-title fw-bold mb-3">Notification Testing</h5>
+                                        <p class="text-muted">Test push notifications to make sure they're working on your device.</p>
+                                        <div class="d-grid gap-2">
+                                            <button type="button" class="btn btn-primary" id="test-notification-btn">
+                                                <i class="bi bi-bell me-2"></i>Send Test Notification
+                                            </button>
+                                        </div>
+                                        <div class="form-text text-muted mt-2">Click the button to send yourself a test notification. This will help confirm that notifications are properly set up on your device.</div>
+                                    </div>
+                                    
+                                    <div class="d-grid">
+                                        <button class="btn btn-primary" type="submit">
+                                            Save Profile
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card shadow">
+                            <div class="card-body">
+                                <h3 class="card-title fw-bold mb-3">Your Prayer Card</h3>
+                                <p class="card-subtitle text-muted mb-4">This is how your prayer card will appear to others</p>
+                                <div class="card mb-4">
+                                    <div class="card-body">
+                                        <div>
+                                            <div style="width: 120px; float: left; margin-right: 15px; margin-bottom: 0;">
+                                                <img id="preview-profile-image" src="img/placeholder-profile.png" 
+                                                     class="img-fluid rounded" alt="Profile Picture">
+                                            </div>
+                                            <h4 class="card-title fw-bold" id="preview-name">Your Name</h4>
+                                            <div id="preview-prayer-points">
+                                            </div>
+                                            <div style="clear: both;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="profile-status" class="alert alert-info d-none">
+                                    <p class="mb-0">Your account is currently pending approval. You will receive an email when your account is approved.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Views -->
+            <!-- Manage Users View -->
+            <div id="manage-users-view" class="view-content d-none">
+                <h3 class="mb-3">Manage Users</h3>
+                
+                <ul class="nav nav-tabs mb-4" id="usersTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="pending-users-tab" data-bs-toggle="tab" 
+                                data-bs-target="#pending-users" type="button" role="tab" 
+                                aria-controls="pending-users" aria-selected="true">Pending</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="approved-users-tab" data-bs-toggle="tab" 
+                                data-bs-target="#approved-users" type="button" role="tab" 
+                                aria-controls="approved-users" aria-selected="false">Approved</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="email-users-tab" data-bs-toggle="tab" 
+                                data-bs-target="#email-users" type="button" role="tab" 
+                                aria-controls="email-users" aria-selected="false">Email Users</button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content" id="usersTabContent">
+                    <div class="tab-pane fade show active" id="pending-users" role="tabpanel" 
+                         aria-labelledby="pending-users-tab">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5>Users Awaiting Approval</h5>
+                            <button id="approve-all-users" class="btn btn-success btn-sm">
+                                <i class="bi bi-check-all me-1"></i>Approve All
+                            </button>
+                        </div>
+                        <div id="pending-users-container">
+                            <!-- Pending users will be dynamically inserted here -->
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="approved-users" role="tabpanel" 
+                         aria-labelledby="approved-users-tab">
+                        <div id="approved-users-container">
+                            <!-- Approved users will be dynamically inserted here -->
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="email-users" role="tabpanel" 
+                         aria-labelledby="email-users-tab">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5>Email-only Users</h5>
+                            <button id="add-email-user" class="btn btn-primary btn-sm">
+                                <i class="bi bi-envelope-plus me-1"></i>Add Email User
+                            </button>
+                        </div>
+                        <div id="email-users-container">
+                            <!-- Email users will be dynamically inserted here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Manage Prayer Calendar View -->
+            <div id="manage-calendar-view" class="view-content d-none">
+                <h2 class="fw-bold mb-4">Manage Prayer Calendar</h2>
+                
+                <ul class="nav nav-tabs mb-4" id="calendarTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="members-tab" data-bs-toggle="tab" 
+                                data-bs-target="#members-content" type="button" role="tab" 
+                                aria-controls="members-content" aria-selected="true">Assign Members</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="other-tab" data-bs-toggle="tab" 
+                                data-bs-target="#other-content" type="button" role="tab" 
+                                aria-controls="other-content" aria-selected="false">Assign Topics</button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content" id="calendarTabContent">
+                    <!-- Add Members Tab -->
+                    <div class="tab-pane fade show active" id="members-content" role="tabpanel" aria-labelledby="members-tab">
+                        <div class="row">
+                            <!-- Days selection in calendar format -->
+                            <div class="col-md-6 mb-4">
+                                <div class="card shadow">
+                                    <div class="card-header bg-primary text-white py-2">
+                                        <h5 class="card-title mb-0">Select Day for Prayer</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="mb-3">Click on a day to select it for member allocation:</p>
+                                        <div class="calendar-days-grid">
+                                            <!-- Days 1-31 will be dynamically inserted here -->
+                                        </div>
+                                        <div class="mt-3">
+                                            <div class="d-flex align-items-center">
+                                                <div class="selected-day-info">
+                                                    <span class="fw-bold">Selected day: </span>
+                                                    <span id="selected-day">None</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Member lists -->
+                            <div class="col-md-6">
+                                <div class="card shadow">
+                                    <div class="card-header bg-primary text-white py-2">
+                                        <h5 class="card-title mb-0">Assign Members to Prayer Calendar</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <!-- Search box -->
+                                        <div class="mb-3">
+                                            <input type="text" class="form-control" id="member-search" placeholder="Search for a member...">
+                                        </div>
+                                        
+                                        <!-- Tabs for unallocated/allocated members -->
+                                        <ul class="nav nav-tabs mb-3" id="memberListTab" role="tablist">
+                                            <li class="nav-item" role="presentation">
+                                                <button class="nav-link active" id="unallocated-tab" data-bs-toggle="tab" 
+                                                       data-bs-target="#unallocated-members" type="button" role="tab" 
+                                                       aria-controls="unallocated-members" aria-selected="true">Unassigned</button>
+                                            </li>
+                                            <li class="nav-item" role="presentation">
+                                                <button class="nav-link" id="allocated-tab" data-bs-toggle="tab" 
+                                                       data-bs-target="#allocated-members" type="button" role="tab" 
+                                                       aria-controls="allocated-members" aria-selected="false">Assigned</button>
+                                            </li>
+                                        </ul>
+                                        
+                                        <div class="tab-content" id="memberListTabContent">
+                                            <!-- Unallocated members list -->
+                                            <div class="tab-pane fade show active" id="unallocated-members" role="tabpanel" aria-labelledby="unallocated-tab">
+                                                <div id="unallocated-members-list" class="member-list">
+                                                    <!-- Unallocated members will be dynamically inserted here -->
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Allocated members list -->
+                                            <div class="tab-pane fade" id="allocated-members" role="tabpanel" aria-labelledby="allocated-tab">
+                                                <div id="allocated-members-list" class="member-list">
+                                                    <!-- Allocated members will be dynamically inserted here -->
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Assign Topics Tab -->
+                    <div class="tab-pane fade" id="other-content" role="tabpanel" aria-labelledby="other-tab">
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <button id="edit-topics-btn" class="btn btn-primary">
+                                    <i class="bi bi-pencil-square me-1"></i> Edit Topics
+                                </button>
+                            </div>
+                            
+                            <!-- Days selection in calendar format -->
+                            <div class="col-md-6 mb-4">
+                                <div class="card shadow">
+                                    <div class="card-header bg-primary text-white py-2">
+                                        <h5 class="card-title mb-0">Select Day for Prayer</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="mb-3">Click on a day to select it for topic allocation:</p>
+                                        <div class="calendar-days-grid">
+                                            <!-- Days 1-31 will be dynamically inserted here -->
+                                        </div>
+                                        <div class="mt-3">
+                                            <div class="d-flex align-items-center">
+                                                <div class="selected-day-info">
+                                                    <span class="fw-bold">Selected day: </span>
+                                                    <span id="topics-selected-day">None</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Topic lists -->
+                            <div class="col-md-6">
+                                <div class="card shadow">
+                                    <div class="card-header bg-primary text-white py-2">
+                                        <h5 class="card-title mb-0">Assign Topics to Prayer Calendar</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <!-- Search box -->
+                                        <div class="mb-3">
+                                            <input type="text" class="form-control" id="topic-search" placeholder="Search for a topic...">
+                                        </div>
+                                        
+                                        <!-- Tabs for unallocated/allocated topics -->
+                                        <ul class="nav nav-tabs mb-3" id="topicListTab" role="tablist">
+                                            <li class="nav-item" role="presentation">
+                                                <button class="nav-link active" id="unallocated-topics-tab" data-bs-toggle="tab" 
+                                                       data-bs-target="#unallocated-topics" type="button" role="tab" 
+                                                       aria-controls="unallocated-topics" aria-selected="true">Unassigned</button>
+                                            </li>
+                                            <li class="nav-item" role="presentation">
+                                                <button class="nav-link" id="allocated-topics-tab" data-bs-toggle="tab" 
+                                                       data-bs-target="#allocated-topics" type="button" role="tab" 
+                                                       aria-controls="allocated-topics" aria-selected="false">Assigned</button>
+                                            </li>
+                                        </ul>
+                                        
+                                        <div class="tab-content" id="topicListTabContent">
+                                            <!-- Unallocated topics list -->
+                                            <div class="tab-pane fade show active" id="unallocated-topics" role="tabpanel" aria-labelledby="unallocated-topics-tab">
+                                                <div id="unallocated-topics-list" class="topic-list">
+                                                    <!-- Unallocated topics will be dynamically inserted here -->
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Allocated topics list -->
+                                            <div class="tab-pane fade" id="allocated-topics" role="tabpanel" aria-labelledby="allocated-topics-tab">
+                                                <div id="allocated-topics-list" class="topic-list">
+                                                    <!-- Allocated topics will be dynamically inserted here -->
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+			<!-- Only changing the "Manage Prayer Updates View" section to match the JS changes -->
+			<!-- Manage Prayer Updates View -->
+			<div id="manage-updates-view" class="view-content d-none">
+				<h3 class="mb-4">Manage Prayer Updates</h3>
+				<div class="row">
+					<div class="col-md-7 mb-4">
+						<div class="card shadow">
+							<div class="card-header bg-primary text-white py-2">
+								<h5 class="card-title mb-0">Edit Prayer Update</h5>
+							</div>
+							<div class="card-body">
+								<form id="update-form">
+									<div class="mb-3">
+										<label for="update-title" class="form-label">Title</label>
+										<input type="text" class="form-control" id="update-title" value="PECH Prayer Update">
+									</div>
+									
+									<div class="mb-3">
+										<label for="update-date" class="form-label">Date</label>
+										<input type="date" class="form-control" id="update-date">
+									</div>
+									
+									<div class="mb-3">
+										<label for="update-editor" class="form-label">Content</label>
+										<div id="update-editor"></div>
+									</div>
+									
+									<div class="d-flex gap-2">
+										<button class="btn btn-primary" type="button" id="save-and-send-btn" name="action" value="saveAndSend">
+											Save and Send
+										</button>
+										<button class="btn btn-primary" type="button" id="save-only-btn" name="action" value="saveOnly">
+											Save
+										</button>
+										<button class="btn btn-warning" type="button" id="clear-btn">
+											Clear
+										</button>
+									</div>
+								</form>
+							</div>
+						</div>
+					</div>
+					<!-- Replace the existing "All Prayer Updates" panel in index.html with this HTML -->
+					<div class="col-md-5">
+						<div class="card shadow">
+							<div class="card-header bg-primary text-white py-2">
+								<div class="d-flex justify-content-between align-items-center flex-wrap">
+									<h5 class="card-title mb-0">All Prayer Updates</h5>
+									<div class="btn-group mt-2 mt-md-0">
+										<button id="edit-update-btn" class="btn btn-sm btn-light me-1">
+											<i class="bi bi-pencil"></i> Edit
+										</button>
+										<button id="delete-update-btn" class="btn btn-sm btn-danger">
+											<i class="bi bi-trash"></i> Delete
+										</button>
+									</div>
+								</div>
+							</div>
+							<div class="card-body">
+								<!-- Prayer updates container will be here -->
+								<div id="admin-updates-container">
+									<!-- Prayer updates will be dynamically inserted here -->
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+            <!-- Manage Urgent Prayers View -->
+            <div id="manage-urgent-view" class="view-content d-none">
+                <h3 class="mb-3">Manage Urgent Prayer Requests</h3>
+                <div class="row">
+                    <div class="col-md-7 mb-4">
+                        <div class="card shadow">
+                            <div class="card-header bg-primary text-white py-2">
+                                <h5 class="card-title mb-0">Create Urgent Prayer Request</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="urgent-form">
+                                    <div class="mb-3">
+                                        <label for="urgent-title" class="form-label">Title</label>
+                                        <input type="text" class="form-control" id="urgent-title" placeholder="Urgent prayer for...">
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="urgent-date" class="form-label">Date</label>
+                                        <input type="date" class="form-control" id="urgent-date">
+                                    </div>
+                                   
+                                     
+                                    <div class="mb-3">
+                                        <label for="urgent-editor" class="form-label">Content</label>
+                                        <div id="urgent-editor"></div>
+                                    </div>
+                                    
+                                    <div class="d-flex gap-2">
+                                        <button class="btn btn-primary" type="button" id="save-and-send-urgent-btn" name="action" value="saveAndSend">
+                                            Save and Send
+                                        </button>
+                                        <button class="btn btn-primary" type="button" id="save-only-urgent-btn" name="action" value="saveOnly">
+                                            Save
+                                        </button>
+                                        <button class="btn btn-warning" type="button" id="clear-urgent-btn">
+                                            Clear
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-5">
+                        <div class="card shadow">
+                            <div class="card-header bg-primary text-white py-2">
+                                <div class="d-flex justify-content-between align-items-center flex-wrap">
+                                    <h5 class="card-title mb-0">All Urgent Prayer Requests</h5>
+                                    <div class="btn-group mt-2 mt-md-0">
+                                        <button id="edit-urgent-btn" class="btn btn-sm btn-light me-1">
+                                            <i class="bi bi-pencil"></i> Edit
+                                        </button>
+                                        <button id="delete-urgent-btn" class="btn btn-sm btn-danger">
+                                            <i class="bi bi-trash"></i> Delete
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="admin-urgent-container">
+                                    <!-- Urgent prayer requests will be dynamically inserted here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Print Prayer Calendar View -->
+            <div id="print-calendar-view" class="view-content d-none">
+                <h3 class="fw-bold mb-4">Print Prayer Diary</h3>
+                <div class="row">
+                    <div class="col-md-4 mb-4">
+                        <div class="card shadow">
+                            <div class="card-header bg-primary text-white py-2">
+                                <h5 class="card-title mb-0">Print Options</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="print-options-form">
+                                    <div class="mb-3">
+                                        <label class="form-label">Date Range</label>
+                                        <select class="form-select" id="print-date-range">
+                                            <option value="current-month">Current Month</option>
+                                            <option value="custom">Custom Range</option>
+                                            <option value="all">All Prayer Cards</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div id="custom-date-range" class="d-none">
+                                        <div class="mb-3">
+                                            <label for="print-start-date" class="form-label">Start Date</label>
+                                            <input type="date" class="form-control" id="print-start-date">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="print-end-date" class="form-label">End Date</label>
+                                            <input type="date" class="form-control" id="print-end-date">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                    <label class="form-label">Font Family</label>
+                                    <select class="form-select" id="print-font-family">
+                                    <option value="Arial, sans-serif">Arial</option>
+                                    <option value="'Times New Roman', serif">Times New Roman</option>
+                                    <option value="Verdana, sans-serif">Verdana</option>
+                                    <option value="Georgia, serif">Georgia</option>
+                                    <option value="'Courier New', monospace">Courier New</option>
+                                        <option value="'Calibri', sans-serif">Calibri</option>
+                                            <option value="'Cambria', serif">Cambria</option>
+                                            <option value="'Tahoma', sans-serif">Tahoma</option>
+                                            <option value="'Garamond', serif">Garamond</option>
+                                            <option value="'Segoe UI', sans-serif">Segoe UI</option>
+                                            <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="d-grid gap-2">
+                                        <button type="button" class="btn btn-primary" id="preview-pdf-btn">
+                                            <i class="bi bi-eye me-1"></i> Preview
+                                        </button>
+                                        <button type="button" class="btn btn-success" id="generate-pdf-btn">
+                                            <i class="bi bi-printer me-1"></i> Generate PDF
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-8">
+                        <div class="card shadow">
+                            <div class="card-header bg-primary text-white py-2">
+                                <h5 class="card-title mb-0">Preview</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="print-preview-container" class="border p-3" style="min-height: 500px;">
+                                    <div class="text-center text-muted">
+                                        <p>Preview will appear here</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Hidden print container that will be used for PDF generation -->
+                <div id="print-container" class="d-none">
+                    <!-- Print pages will be dynamically added here -->
+                </div>
+            </div>
+
+            <!-- Test Email Sending View -->
+            <div id="test-email-view" class="view-content d-none">
+                <h1 class="display-6 mb-4">Test Email Sending</h1>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card shadow border-0">
+                            <div class="card-header bg-primary text-white py-3">
+                                <h4 class="card-title mb-0">
+                                    <i class="bi bi-envelope me-2"></i>Send Test Email
+                                </h4>
+                            </div>
+                            <div class="card-body p-4">
+                                <form id="test-email-form">
+                                    <div class="mb-3">
+                                        <label for="test-email-to" class="form-label fw-bold">Recipient Email</label>
+                                        <input type="email" class="form-control" id="test-email-to" placeholder="recipient@example.com" required>
+                                        <div class="form-text">The email address to send the test message to</div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="test-email-subject" class="form-label fw-bold">Subject</label>
+                                        <input type="text" class="form-control" id="test-email-subject" value="Prayer Diary Test Email" required>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="test-email-content" class="form-label fw-bold">Email Content (HTML)</label>
+                                        <textarea class="form-control" id="test-email-content" rows="6" required>
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <h2 style="color: #483D8B;">Prayer Diary Test Email</h2>
+    <p>This is a test email from the Prayer Diary application.</p>
+    <p>If you received this email, the email sending functionality is working correctly.</p>
+    <hr style="border: 1px solid #eee; margin: 20px 0;">
+    <p style="font-size: 12px; color: #666;">
+        This is a test message sent at: ${new Date().toLocaleString()}
+    </p>
+</div>
+                                        </textarea>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Advanced Options</label>
+                                        <div class="card bg-light">
+                                            <div class="card-body">
+                                                <div class="mb-3">
+                                                    <label for="test-email-cc" class="form-label">CC</label>
+                                                    <input type="email" class="form-control" id="test-email-cc" placeholder="cc@example.com">
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <label for="test-email-bcc" class="form-label">BCC</label>
+                                                    <input type="email" class="form-control" id="test-email-bcc" placeholder="bcc@example.com">
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <label for="test-email-reply-to" class="form-label">Reply-To</label>
+                                                    <input type="email" class="form-control" id="test-email-reply-to" placeholder="reply@example.com">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="d-grid mt-4">
+                                        <button class="btn btn-primary btn-lg" type="submit" id="send-test-email-btn">
+                                            <i class="bi bi-send me-2"></i>Send Test Email
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card shadow border-0 mb-4">
+                            <div class="card-header bg-primary text-white py-3">
+                                <h4 class="card-title mb-0">
+                                    <i class="bi bi-info-circle me-2"></i>Email Testing Information
+                                </h4>
+                            </div>
+                            <div class="card-body p-4">
+                                <p>Use this tool to test the email sending functionality of Prayer Diary.</p>
+                                
+                                <h5 class="mt-3 mb-2">Email Configuration Status:</h5>
+                                <div id="email-config-status" class="alert alert-info">
+                                    Checking email configuration...
+                                </div>
+                                
+                                <h5 class="mt-4 mb-2">Tips for Testing:</h5>
+                                <ul>
+                                    <li>Start with a simple test to your own email address</li>
+                                    <li>Check your spam folder if the email doesn't arrive</li>
+                                    <li>You can customize the HTML content for more complex tests</li>
+                                    <li>The email sending function uses Google SMTP</li>
+                                </ul>
+                                
+                                <h5 class="mt-4 mb-2">Troubleshooting:</h5>
+                                <ul>
+                                    <li>Verify the Edge Function is deployed correctly</li>
+                                    <li>Ensure the SMTP credentials are set up in Supabase</li>
+                                    <li>Check the browser console for detailed error messages</li>
+                                </ul>
+                                
+                                <!-- Test buttons removed -->
+                            </div>
+                        </div>
+                        
+                        <div class="card shadow border-0">
+                            <div class="card-header bg-primary text-white py-3">
+                                <h4 class="card-title mb-0">
+                                    <i class="bi bi-clock-history me-2"></i>Test Results
+                                </h4>
+                            </div>
+                            <div class="card-body p-4">
+                                <div id="test-results-container">
+                                    <div class="text-center text-muted">
+                                        <p>No test emails sent yet</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- Delete Prayer Update Confirmation Modal -->
+    <div class="modal fade" id="delete-update-confirm-modal" tabindex="-1" aria-labelledby="delete-update-confirm-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="delete-update-confirm-title">Confirm Deletion</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete this prayer update? This action cannot be undone.</p>
+                    <p id="delete-update-title" class="fw-bold text-danger"></p>
+                    <input type="hidden" id="delete-update-id">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirm-delete-update">Delete Update</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Delete User Confirmation Modal -->
+    <div class="modal fade" id="delete-user-modal" tabindex="-1" aria-labelledby="delete-user-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="delete-user-title">Confirm Deletion</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete this user? This action cannot be undone.</p>
+                    <p id="delete-user-name" class="fw-bold text-danger"></p>
+                    <input type="hidden" id="delete-user-id">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirm-delete-user">Delete User</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Auth Modal -->
+    <div class="modal fade" id="auth-modal" data-bs-backdrop="static" tabindex="-1" aria-labelledby="auth-modal-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="auth-modal-title">Log In</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="auth-modal-close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="auth-error" class="alert alert-danger d-none">
+                        <p class="mb-0">Error message will appear here</p>
+                    </div>
+                    <form id="auth-form">
+                        <div class="mb-3 signup-field d-none">
+                            <label for="signup-name" class="form-label">Full Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="signup-name" name="signup-name" placeholder="Your full name" required>
+                            <div class="form-text">Please enter your full name as you wish it to appear in the app.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="auth-email" class="form-label">Email <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control" id="auth-email" name="auth-email" placeholder="Your email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="auth-password" class="form-label">Password <span class="text-danger">*</span></label>
+                            <input type="password" class="form-control" id="auth-password" name="auth-password" placeholder="Your password" required>
+                            <div class="form-text signup-field d-none">Must be at least 6 characters long.</div>
+                        </div>
+                        <!-- Password confirmation field - only shown during signup -->
+                        <div class="mb-4 signup-field d-none">
+                            <label for="auth-confirm-password" class="form-label">Confirm Password <span class="text-danger">*</span></label>
+                            <input type="password" class="form-control" id="auth-confirm-password" name="auth-confirm-password" placeholder="Confirm your password" required>
+                            <div class="form-text password-match-message d-none text-danger">Passwords do not match.</div>
+                        </div>
+                        <div class="d-grid">
+                            <button class="btn btn-primary" type="submit" id="auth-submit">Log In</button>
+                        </div>
+                        <!-- Forgotten password link - only shown during login -->
+                        <div class="text-center mt-2 login-field">
+                            <a href="#" id="forgot-password-link">Forgotten Password?</a>
+                        </div>
+                    </form>
+                    <div class="text-center mt-4">
+                        <p id="auth-switch-text">Don't have an account? <a href="#" id="auth-switch">Sign up</a></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    <div class="modal fade" id="edit-user-modal" tabindex="-1" aria-labelledby="edit-user-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="edit-user-title">Edit User Permissions</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="edit-user-form">
+                        <input type="hidden" id="edit-user-id">
+                        <div class="mb-3">
+                            <label for="user-role" class="form-label">User Role</label>
+                            <select class="form-select" id="user-role">
+                                <option value="User">User</option>
+                                <option value="Administrator">Administrator</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="approval-state" class="form-label">Approval State</label>
+                            <select class="form-select" id="approval-state">
+                                <option value="Pending">Pending</option>
+                                <option value="Approved">Approved</option>
+                                <option value="Rejected">Rejected</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Permissions</label>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="calendar-editor">
+                                <label class="form-check-label" for="calendar-editor">
+                                    Prayer Calendar Editor
+                                </label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="user-update-editor">
+                                <label class="form-check-label" for="update-editor">
+                                    Prayer Update Editor
+                                </label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="user-urgent-editor">
+                                <label class="form-check-label" for="urgent-editor">
+                                    Urgent Prayer Editor
+                                </label>
+                            </div>
+                            <!-- Only display this for admin users -->
+                            <div class="form-check mb-2 admin-permission-field" style="display: none;">
+                                <input class="form-check-input" type="checkbox" id="approval-admin">
+                                <label class="form-check-label" for="approval-admin">
+                                    User Registration Approval
+                                </label>
+                                <div class="form-text">Authorized to approve new user registrations</div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="save-user">Save changes</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="cancel-edit-user">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Prayer Calendar Entry Modal -->
+    <div class="modal fade" id="edit-calendar-modal" tabindex="-1" aria-labelledby="edit-calendar-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="edit-calendar-title">Edit Prayer Calendar Entry</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="edit-calendar-form">
+                        <input type="hidden" id="edit-calendar-id">
+                        <div class="mb-3">
+                            <label for="edit-calendar-day" class="form-label">Day of Month</label>
+                            <select class="form-select" id="edit-calendar-day">
+                                <!-- Options 1-31 will be added dynamically -->
+                            </select>
+                        </div>
+                        
+                        <div id="edit-other-entry-container">
+                            <div class="mb-3">
+                                <label for="edit-calendar-name" class="form-label">Name</label>
+                                <input type="text" class="form-control" id="edit-calendar-name" placeholder="Person or organization name">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="edit-calendar-image" class="form-label">Image</label>
+                                <div class="input-group mb-2">
+                                    <input type="file" class="form-control" id="edit-calendar-image" accept="image/*">
+                                    <label class="input-group-text" for="edit-calendar-image">
+                                        <i class="bi bi-upload"></i>
+                                    </label>
+                                </div>
+                                <div class="form-text" id="edit-calendar-image-name">No file selected</div>
+                                <div class="mt-2">
+                                    <img id="edit-calendar-image-preview" class="img-fluid" style="max-height: 200px;">
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="edit-calendar-prayer-points" class="form-label">Prayer Points</label>
+                                <textarea class="form-control" id="edit-calendar-prayer-points" rows="4" placeholder="Enter prayer points"></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="save-calendar-entry">Save changes</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="cancel-edit-calendar">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Prayer Update Modal -->
+    <div class="modal fade" id="edit-update-modal" tabindex="-1" aria-labelledby="edit-update-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="edit-update-title">Edit Prayer Update</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="edit-update-form">
+                        <input type="hidden" id="edit-update-id">
+                        <div class="mb-3">
+                            <label for="edit-update-title-input" class="form-label">Title</label>
+                            <input type="text" class="form-control" id="edit-update-title-input" placeholder="Weekly Prayer Update - [date]">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="edit-update-editor" class="form-label">Content</label>
+                            <div id="edit-update-editor"></div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <div class="d-flex justify-content-between w-100">
+                        <div>
+                            <button type="button" class="btn btn-danger me-2" id="delete-update">Delete</button>
+                            <button type="button" class="btn btn-warning me-2" id="archive-update">Archive</button>
+                            <button type="button" class="btn btn-success me-2" id="unarchive-update">Unarchive</button>
+                        </div>
+                        <div>
+                            <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal" id="cancel-edit-update">Cancel</button>
+                            <button type="button" class="btn btn-primary" id="save-update">Save changes</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Update Confirmation Modal -->
+    <div class="modal fade" id="delete-update-confirmation-modal" tabindex="-1" aria-labelledby="delete-update-confirmation-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="delete-update-confirmation-title">Confirm Deletion</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete this prayer update? This action cannot be undone.</p>
+                    <p id="delete-update-title" class="fw-bold text-danger"></p>
+                    <input type="hidden" id="delete-update-id">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirm-delete-update">Delete Update</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Urgent Prayer Modal -->
+    <div class="modal fade" id="edit-urgent-modal" tabindex="-1" aria-labelledby="edit-urgent-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="edit-urgent-title">Edit Urgent Prayer Request</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="edit-urgent-form">
+                        <input type="hidden" id="edit-urgent-id">
+                        <div class="mb-3">
+                            <label for="edit-urgent-title-input" class="form-label">Title</label>
+                            <input type="text" class="form-control" id="edit-urgent-title-input" placeholder="Urgent prayer for...">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="edit-urgent-date" class="form-label">Date</label>
+                            <input type="date" class="form-control" id="edit-urgent-date">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="edit-urgent-editor" class="form-label">Content</label>
+                            <div id="edit-urgent-editor"></div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <div class="d-flex justify-content-between w-100">
+                        <div>
+                            <button type="button" class="btn btn-danger me-2" id="delete-urgent">Delete</button>
+                            <button type="button" class="btn btn-warning me-2" id="edit-urgent">Edit</button>
+                        </div>
+                        <div>
+                            <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal" id="cancel-edit-urgent">Cancel</button>
+                            <button type="button" class="btn btn-primary" id="save-urgent">Save changes</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Preferences View -->
+            <div id="preferences-view" class="view-content d-none">
+                <h1 class="display-6 mb-4">My Preferences</h1>
+                <div class="row">
+                    <div class="col-md-8 mx-auto">
+                        <div class="card shadow">
+                            <div class="card-body">
+                                <form id="preferences-form">
+                                    <div class="mb-4">
+                                        <h5 class="card-title fw-bold mb-3">Display Mode</h5>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="display-mode" id="light-mode" value="light" checked>
+                                            <label class="form-check-label" for="light-mode">
+                                                <i class="bi bi-brightness-high me-2"></i>Light Mode
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="display-mode" id="dark-mode" value="dark">
+                                            <label class="form-check-label" for="dark-mode">
+                                                <i class="bi bi-moon-fill me-2"></i>Dark Mode
+                                            </label>
+                                        </div>
+                                        <div class="form-text text-muted">Choose your preferred display theme for the application.</div>
+                                    </div>
+                                    
+                                    <div class="mb-4">
+                                        <h5 class="card-title fw-bold mb-3">Prayer Card Photo Size</h5>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="photo-size" id="large-photo" value="large" checked>
+                                            <label class="form-check-label" for="large-photo">
+                                                <i class="bi bi-image me-2"></i>Large Photo
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="photo-size" id="small-photo" value="small">
+                                            <label class="form-check-label" for="small-photo">
+                                                <i class="bi bi-image-alt me-2"></i>Small Photo (side-by-side with text)
+                                            </label>
+                                        </div>
+                                        <div class="form-text text-muted">Choose how photos are displayed on prayer cards.</div>
+                                    </div>
+                                    
+                                    <div class="d-grid">
+                                        <button class="btn btn-primary" type="submit">
+                                            Save Preferences
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Change Password Modal -->
+    <div class="modal fade" id="change-password-modal" tabindex="-1" aria-labelledby="change-password-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="change-password-title">Change Password</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="password-change-error" class="alert alert-danger d-none">
+                        <p class="mb-0">Error message will appear here</p>
+                    </div>
+                    <div id="password-change-success" class="alert alert-success d-none">
+                        <p class="mb-0">Success message will appear here</p>
+                    </div>
+                    <form id="change-password-form">
+                        <div class="mb-3">
+                            <label for="current-password" class="form-label">Current Password <span class="text-danger">*</span></label>
+                            <input type="password" class="form-control" id="current-password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="change-new-password" class="form-label">New Password <span class="text-danger">*</span></label>
+                            <input type="password" class="form-control" id="change-new-password" required>
+                            <div class="form-text">Password must be at least 6 characters long.</div>
+                        </div>
+                        <div class="mb-4">
+                            <label for="confirm-password" class="form-label">Confirm New Password <span class="text-danger">*</span></label>
+                            <input type="password" class="form-control" id="confirm-password" required>
+                            <div class="form-text password-match-message d-none text-danger">Passwords do not match.</div>
+                        </div>
+                        <div class="d-grid">
+                            <button class="btn btn-primary" type="submit" id="change-password-submit">Update Password</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Update Confirmation Modal -->
+<div class="modal fade" id="delete-update-confirmation-modal" tabindex="-1" aria-labelledby="delete-update-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="delete-update-title">Confirm Deletion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this prayer update? This action cannot be undone.</p>
+                <p id="delete-update-name" class="fw-bold text-danger"></p>
+                <input type="hidden" id="delete-update-id">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirm-delete-update">Delete Update</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Urgent Prayer Confirmation Modal -->
+<div class="modal fade" id="delete-urgent-confirm-modal" tabindex="-1" aria-labelledby="delete-urgent-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="delete-urgent-title">Confirm Deletion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this urgent prayer request? This action cannot be undone.</p>
+                <p id="delete-urgent-title" class="fw-bold text-danger"></p>
+                <input type="hidden" id="delete-urgent-id">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirm-delete-urgent">Delete Request</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- View Update Modal -->
+<div class="modal fade" id="view-update-modal" tabindex="-1" aria-labelledby="view-update-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="view-update-title" style="font-size: 1rem;">Prayer Update</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="view-update-date" class="text-muted mb-3"><i class="bi bi-calendar"></i> <span></span></p>
+                <div id="view-update-content">
+                    <!-- Update content will be inserted here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- GDPR Consent Modal - Static backdrop, no keyboard escape, no close on outside click -->
+    <div class="modal fade" id="gdpr-consent-modal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="gdpr-consent-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="gdpr-consent-title">Data Privacy Consent</h5>
+                    <!-- Close button removed to prevent dismissal -->
+                </div>
+                <div class="modal-body">
+                    <div class="mb-4">
+                        <h6 class="fw-bold">Privacy Notice</h6>
+                        <p>To ensure compliance with UK data protection law (UK GDPR), please review how we use your information:</p>
+                        
+                        <div class="card bg-light mb-3">
+                            <div class="card-body">
+                                <h6 class="card-subtitle mb-2">How we use your data:</h6>
+                                <ul class="mb-0">
+                                    <li>Your profile picture and prayer requests will be visible to other approved members of the church.</li>
+                                    <li>Your phone number and WhatsApp number will only be visible to administrators if you've provided them.</li>
+                                    <li>Your data is stored securely and will only be used for prayer ministry purposes.</li>
+                                    <li>We will not share your data with third parties without your consent.</li>
+                                    <li>You can request deletion of your data at any time by contacting an administrator.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-check mb-4">
+                        <input class="form-check-input" type="checkbox" id="gdpr-consent-check">
+                        <label class="form-check-label" for="gdpr-consent-check">
+                            I understand and consent to the use of my data as described above.
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="gdpr-consent-cancel">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="gdpr-consent-submit" disabled>Save Profile</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Prayer Card Modal -->
+    <div class="modal fade" id="view-card-modal" tabindex="-1" aria-labelledby="card-modal-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="card-modal-title">Prayer Card</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div>
+                        <div style="width: 120px; float: left; margin-right: 15px; margin-bottom: 0;">
+                            <img id="card-image" src="img/placeholder-profile.png" class="img-fluid rounded" alt="Prayer Card Image">
+                        </div>
+                        <div id="card-content">
+                            <!-- Card content will be inserted here -->
+                        </div>
+                        <div style="clear: both;"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="close-card-modal" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Modal -->
+    <div class="modal fade" id="notification-modal" tabindex="-1" aria-labelledby="notification-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="notification-title">Notification</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="notification-content">
+                        <!-- Notification content will be inserted here -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="close-notification">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Push Notification Permission Prompt -->
+    <div class="notification-permission-prompt" id="push-permission-prompt">
+        <h5><i class="bi bi-bell me-2"></i>Enable Notifications</h5>
+        <p>Get instant updates when new prayer requests are added. Never miss an urgent prayer need.</p>
+        <div class="actions">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="notification-later">Later</button>
+            <button type="button" class="btn btn-primary btn-sm" id="notification-allow">Enable</button>
+        </div>
+    </div>
+
+    <!-- Topic Management Modal -->
+    <div class="modal fade" id="topic-management-modal" tabindex="-1" aria-labelledby="topic-management-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="topic-management-title">Manage Prayer Topics</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <button id="add-topic-btn" class="btn btn-primary">
+                            <i class="bi bi-plus-circle me-1"></i> Add New Topic
+                        </button>
+                    </div>
+                    <div id="topics-list-container">
+                        <!-- Topics will be dynamically inserted here -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Prayer Topic Modal with Camera Functionality -->
+    <div class="modal fade" id="topic-edit-modal" tabindex="-1" aria-labelledby="topic-edit-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="topic-edit-title">Add Prayer Topic</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="topic-form">
+                        <input type="hidden" id="topic-id">
+                        <div class="mb-3">
+                            <label for="topic-title" class="form-label">Topic Title or person name(s)</label>
+                            <input type="text" class="form-control" id="topic-title" placeholder="Enter topic title or person name(s)">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="topic-image" class="form-label">Image</label>
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="me-3">
+                                    <img id="topic-image-preview" class="border rounded" 
+                                         src="img/placeholder-profile.png" alt="Topic preview" 
+                                         style="width: 80px; height: 80px; object-fit: cover;">
+                                </div>
+                                <div class="d-flex">
+                                    <button type="button" class="btn btn-outline-primary" id="select-topic-image">
+                                        <i class="bi bi-upload me-1"></i> Upload Image
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary ms-2" id="take-topic-photo">
+                                        <i class="bi bi-camera me-1"></i> Take Photo
+                                    </button>
+                                    <input type="file" class="d-none" id="topic-image" accept="image/*">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="topic-text-editor" class="form-label">Prayer Details</label>
+                            <div id="topic-text-editor"></div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="save-topic" disabled>Save Topic</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Navigation Drawer -->
+    <div class="nav-overlay"></div>
+    <div class="nav-drawer">
+        <button class="drawer-close" aria-label="Close navigation drawer">&times;</button>
+        <div class="drawer-content">
+            <div class="drawer-header">
+                <img src="img/logo.png" alt="Prayer Diary Logo" width="40" height="20" class="me-2">
+                <span>PECH Prayer</span>
+            </div>
+            <ul class="drawer-menu">
+                <!-- Navigation items will be dynamically inserted here -->
+            </ul>
+        </div>
+    </div>
+
+    <!-- Email-only User Registration Modal -->
+<div class="modal fade" id="email-user-modal" tabindex="-1" aria-labelledby="email-user-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="email-user-title">Register Email-only User</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-3">Register a user who will only receive email notifications and won't use the app directly.</p>
+                <form id="email-user-form">
+                    <div class="mb-3">
+                        <label for="email-user-name" class="form-label">Full Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="email-user-name" placeholder="Full name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="email-user-email" class="form-label">Email Address <span class="text-danger">*</span></label>
+                        <input type="email" class="form-control" id="email-user-email" placeholder="Email address" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="register-email-user-btn">Register User</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Password Reset Request Modal (to request a reset link) -->
+    <div class="modal fade" id="password-reset-modal" tabindex="-1" aria-labelledby="password-reset-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="password-reset-title">Reset Password</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="password-reset-error" class="alert alert-danger d-none">
+                        <p class="mb-0">Error message will appear here</p>
+                    </div>
+                    <div id="password-reset-success" class="alert alert-success d-none">
+                        <p class="mb-0">Success message will appear here</p>
+                    </div>
+                    <form id="password-reset-form">
+                        <div class="mb-3">
+                            <label for="reset-email" class="form-label">Email <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control" id="reset-email" name="reset-email" placeholder="Enter your email address" required>
+                            <div class="form-text">Enter the email address you used to register. We'll send you a link to reset your password.</div>
+                        </div>
+                        <div class="d-grid">
+                            <button class="btn btn-primary" type="submit" id="reset-submit">Send Reset Link</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Password Modal (after clicking the reset link) -->
+    <div class="modal fade" id="new-password-modal" data-bs-backdrop="static" tabindex="-1" aria-labelledby="new-password-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="new-password-title">Set New Password</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="new-password-error" class="alert alert-danger d-none">
+                        <p class="mb-0">Error message will appear here</p>
+                    </div>
+                    <div id="new-password-success" class="alert alert-success d-none">
+                        <p class="mb-0">Success message will appear here</p>
+                    </div>
+                    <form id="new-password-form">
+                        <div class="mb-3">
+                            <label for="new-password" class="form-label">New Password <span class="text-danger">*</span></label>
+                            <input type="password" class="form-control" id="new-password" name="new-password" 
+                                   placeholder="Enter your new password" required>
+                            <div class="form-text">Password must be at least 6 characters long.</div>
+                        </div>
+                        <div class="mb-4">
+                            <label for="confirm-new-password" class="form-label">Confirm New Password <span class="text-danger">*</span></label>
+                            <input type="password" class="form-control" id="confirm-new-password" name="confirm-new-password" 
+                                   placeholder="Confirm your new password" required>
+                            <div class="form-text password-match-message-reset d-none text-danger">Passwords do not match.</div>
+                        </div>
+                        <div class="d-grid">
+                            <button class="btn btn-primary" type="submit" id="new-password-submit">Update Password</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Topic Management Modal -->
+    <div class="modal fade" id="topic-management-modal" tabindex="-1" aria-labelledby="topic-management-title" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="topic-management-title">Manage Prayer Topics</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex justify-content-end mb-3">
+                        <button id="add-topic-btn" class="btn btn-success">
+                            <i class="bi bi-plus-circle me-1"></i> Add Topic
+                        </button>
+                    </div>
+                    
+                    <div id="topics-list-container">
+                        <!-- Topics will be dynamically inserted here -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Toast container -->
+    <div class="toast-container position-fixed bottom-0 start-50 translate-middle-x p-3" id="toast-container">
+        <!-- Toasts will be dynamically added here -->
+    </div>
+
+    <!-- Navigation Drawer for Mobile -->
+    <div class="nav-overlay"></div>
+    <div class="nav-drawer">
+        <div class="drawer-header">
+            <a class="navbar-brand" href="index.html">
+                <img src="img/logo.png" alt="Prayer Diary Logo" width="50" height="28" class="d-inline-block align-text-top me-2">
+                Prayer Diary
+            </a>
+            <button class="drawer-close" aria-label="Close navigation">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        <div class="drawer-menu">
+            <!-- This will be populated with the same navigation items as the navbar -->
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <!-- Production Mode Setting -->
+    <script>
+        // Global development mode flag - enabled for development, set to false in production
+        window.PRAYER_DIARY_DEV_MODE = true;
+    </script>
+    
+    <!-- First import Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Rich Text Editor JS (Quill) -->
+	<script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
+    
+    <!-- Development Tools - disabled in production -->
+    <!-- <script src="js/dev-tools.js"></script> -->
+    
+    <!-- App JS with dynamic version parameters - Note the order is important -->
+    <script>
+        // Helper to add cache busting parameters to scripts with generation timestamp
+        const BUILD_TIMESTAMP = Date.now();
+        function loadScript(src) {
+            document.write(`<script src="${src}?v=${BUILD_TIMESTAMP}_${Math.random().toString(36).substring(2,8)}"><\/script>`);
+        }
+    </script>
+    
+    <script>
+        // Load all scripts with cache busting
+        loadScript("js/config.js");
+        loadScript("js/auth.js");
+        // Admin.js needs to be loaded before UI.js since UI.js references functions from admin.js
+        loadScript("js/admin.js");
+        loadScript("js/ui.js");
+        loadScript("js/calendar.js");
+        loadScript("js/topics.js");
+        loadScript("js/person-search.js");
+        loadScript("js/updates.js");
+        loadScript("js/urgent.js");
+        loadScript("js/profile.js");
+        loadScript("js/notifications.js");
+        loadScript("js/push-notifications.js");
+		//loadScript("js/push-notifications-handler.js");
+        loadScript("js/email-test.js");
+        loadScript("js/password-change.js");
+        loadScript("js/preferences.js");
+        loadScript("js/drawer-navigation.js");
+		loadScript("js/refresh.js");
+        loadScript("js/print-calendar.js");
+        loadScript("js/app.js");
+        
+        // Load mobile debug panel only in development mode
+        if (window.PRAYER_DIARY_DEV_MODE === true) {
+            console.log("Loading debug panel for mobile devices");
+            loadScript("js/debug-panel.js");
+        }
+    </script>
+    
+    <!-- Service Worker Registration - Production Mode with update checking -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                // Add cache-busting query parameter to force update
+                const swUrl = 'service-worker.js?v=' + Date.now();
+                
+                // Unregister any existing service worker first
+                navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                    for (let registration of registrations) {
+                        registration.unregister().then(function(success) {
+                            console.log('ServiceWorker unregistered successfully:', success);
+                        }).catch(function(error) {
+                            console.error('ServiceWorker unregister failed:', error);
+                        });
+                    }
+                    
+                    // Then register the new one
+                    navigator.serviceWorker.register(swUrl)
+                        .then(function(registration) {
+                            console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                            
+                            // Force update check
+                            registration.update();
+                        })
+                        .catch(function(err) {
+                            console.log('ServiceWorker registration failed: ', err);
+                        });
+                });
+            });
+        }
+    </script>
+	<script>
+	  function isStandalone() {
+		return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+	  }
+
+	  if (isStandalone()) {
+		window.history.pushState(null, null, document.URL);
+		
+		window.addEventListener("popstate", function () {
+			window.history.pushState(null, null, document.URL);
+		});
+
+		window.addEventListener("beforeunload", function (event) {
+			event.preventDefault();
+			event.returnValue = '';
+		});
+
+	  }
+	</script>
+    <!-- Square Camera Module for profile photo capture -->
+    <script src="js/square-camera.js?v=dev"></script>
+</body>
+</html>
