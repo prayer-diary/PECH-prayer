@@ -95,6 +95,38 @@ serve(async (req) => {
     // Get the base URL from environment variable or use the GitHub Pages URL as default
     const BASE_URL = Deno.env.get('APP_URL') || 'https://prayer-diary.github.io/PECH-prayer';
 
+    // Parse provided navigation URL or create one using the contentType
+    let navigationUrl = data?.url || '/';
+
+    // Fix URL format for contentType-based navigation
+    // This ensures we use fragment-based navigation that works with single-page apps
+    if (contentType && !navigationUrl.includes('#')) {
+      // Map contentType to the appropriate view fragment
+      if (contentType === 'urgent') {
+        navigationUrl = '/#urgent-view';
+      } else if (contentType === 'update') {
+        navigationUrl = '/#updates-view';
+      } else if (contentType === 'calendar') {
+        navigationUrl = '/#calendar-view';
+      } else {
+        // Default to root with query parameter
+        navigationUrl = `/?type=${contentType}`;
+      }
+
+      // Add contentId as parameter if available
+      if (contentId) {
+        // If using hash navigation use query parameter after hash
+        if (navigationUrl.includes('#')) {
+          navigationUrl += `?id=${contentId}`;
+        } else {
+          // Otherwise append as regular query parameter
+          navigationUrl += `&id=${contentId}`;
+        }
+      }
+    }
+
+    console.log(`Generated navigation URL: ${navigationUrl}`);
+
     // Prepare notification payload with absolute URLs for icons
     const notificationPayload = JSON.stringify({
       title: title,
@@ -105,7 +137,7 @@ serve(async (req) => {
       data: {
         dateOfArrival: Date.now(),
         primaryKey: 1,
-        url: data?.url || '/',
+        url: navigationUrl, // Use the properly formatted URL
         contentType,
         contentId
       },
@@ -158,7 +190,8 @@ serve(async (req) => {
             notification_type: 'push',
             content_type: contentType,
             content_id: contentId,
-            status: 'sent'
+            status: 'sent',
+            target_url: navigationUrl // Store the target URL for debugging purposes
           })
 
       } catch (error) {
@@ -193,7 +226,8 @@ serve(async (req) => {
             content_type: contentType,
             content_id: contentId,
             status: 'failed',
-            error_message: error.message
+            error_message: error.message,
+            target_url: navigationUrl // Store the target URL for debugging purposes
           })
       }
     }

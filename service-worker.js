@@ -1,7 +1,7 @@
 // Service Worker for PECH Prayer Diary PWA
 
 // Cache version - update this number to force refresh of caches
-const CACHE_VERSION = '1.1.000';
+const CACHE_VERSION = '1.1.001';
 const CACHE_NAME = `prayer-diary-cache-${CACHE_VERSION}`;
 
 // App shell files to cache initially
@@ -23,7 +23,7 @@ const APP_SHELL_FILES = [
   '/js/config.js',
   '/img/logo.png',
   '/img/placeholder-profile.png',
-  '/img/icons/ios/192.png', // Using more generic iOS icon instead of Android-specific
+  '/img/icons/ios/192.png',
   '/img/icons/ios/512.png',
   '/img/icons/ios/180.png'
 ];
@@ -175,7 +175,7 @@ self.addEventListener('push', (event) => {
       
       const notificationOptions = {
         body: pushData.body || 'New prayer notification',
-        icon: pushData.icon || '/img/icons/ios/192.png', // Default to generic iOS icon
+        icon: pushData.icon || '/img/icons/ios/192.png', 
         badge: pushData.badge || '/img/icons/ios/72.png',
         image: pushData.image || null,
         vibrate: pushData.vibrate || [100, 50, 100],
@@ -239,7 +239,24 @@ self.addEventListener('notificationclick', (event) => {
   
   // Resolve the target URL to absolute URL
   const baseUrl = self.location.origin;
-  const fullUrl = new URL(targetUrl, baseUrl).href;
+  
+  // Handle fragment identifiers for SPA routing (handle both fragment and URL paths)
+  let fullUrl;
+  if (targetUrl.startsWith('#')) {
+    // If it's just a fragment identifier, append it to base URL
+    fullUrl = baseUrl + '/' + targetUrl;
+  } else if (targetUrl.startsWith('/#')) {
+    // If it's a fragment with slash, prepend baseUrl
+    fullUrl = baseUrl + targetUrl;
+  } else if (targetUrl.startsWith('/')) {
+    // If it's a path starting with slash
+    fullUrl = baseUrl + targetUrl;
+  } else {
+    // Otherwise, resolve as is
+    fullUrl = new URL(targetUrl, baseUrl).href;
+  }
+  
+  console.log('[Service Worker] Navigation target:', fullUrl);
   
   // Open or focus the target URL in an existing window/tab if possible
   event.waitUntil(
@@ -247,9 +264,9 @@ self.addEventListener('notificationclick', (event) => {
       type: 'window',
       includeUncontrolled: true
     }).then((windowClients) => {
-      // Check if there's already a window/tab open with our URL
+      // Check if there's already a window/tab open with our origin
       const matchingClient = windowClients.find((client) => {
-        return client.url === fullUrl || client.url.startsWith(baseUrl);
+        return client.url.startsWith(baseUrl);
       });
       
       // If found, focus it and navigate if needed
