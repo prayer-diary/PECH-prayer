@@ -3,19 +3,21 @@
 // Flag to prevent multiple simultaneous profile loads
 let profileLoadInProgress = false;
 
+// Device detection constants
+const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+const IS_STANDALONE = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
 // Load and display the user's profile
 async function loadUserProfile() {
     if (!isLoggedIn()) return;
 	
-	
-    
     // Prevent multiple simultaneous calls
     if (profileLoadInProgress) {
         console.log('Profile load already in progress, skipping duplicate call');
         return;
     }
 	
-	 await window.waitForAuthStability();
+	await window.waitForAuthStability();
     
     profileLoadInProgress = true;
     
@@ -94,7 +96,6 @@ async function loadUserProfile() {
         // Initial check for which phone fields to show
         updatePhoneFieldsVisibility();
         
-        
         // Reset GDPR consent checkbox and button
         if (document.getElementById('gdpr-consent-check')) {
             document.getElementById('gdpr-consent-check').checked = false;
@@ -149,6 +150,9 @@ async function loadUserProfile() {
         
         // Add change handler for photo tag to update preview
         document.getElementById('profile-photo-tag').addEventListener('input', updateProfilePreview);
+        
+        // Initialize notification section with iOS-specific warnings if needed
+        initProfileNotifications();
         
     } catch (error) {
         console.error('Error loading profile:', error);
@@ -493,7 +497,28 @@ function setupNotificationMethodHandlers() {
             
             // Then handle push notification permissions if push is selected
             if (this.value === 'push') {
-                // Request push permissions on all device types
+                // iOS-specific check
+                if (IS_IOS && !IS_STANDALONE) {
+                    // Show iOS installation requirement
+                    if (typeof showIOSInstallInstructions === 'function') {
+                        showIOSInstallInstructions();
+                    } else {
+                        // Fallback if the function doesn't exist
+                        showNotification(
+                            'Installation Required', 
+                            'On iOS, you need to install this app to your home screen before enabling push notifications.',
+                            'warning'
+                        );
+                    }
+                    
+                    // Revert to the previous selection
+                    const originalMethod = userProfile.notification_method || 'none';
+                    document.querySelector(`input[name="notification-method"][value="${originalMethod}"]`).checked = true;
+                    updatePhoneFieldsVisibility();
+                    return;
+                }
+                
+                // Request push permissions on all other device types
                 requestNotificationPermission().then(result => {
                     if (!result) {
                         // If permission failed, revert to 'none'
@@ -542,6 +567,75 @@ function setupNotificationMethodHandlers() {
             }
         });
     }
+}
+
+// Initialize notification section with iOS-specific warnings
+function initProfileNotifications() {
+    // Show warning for iOS users if they haven't installed the app
+    if (IS_IOS && !IS_STANDALONE) {
+        // Add a warning banner to the notification section
+        const notificationSection = document.querySelector('.notification-method, form fieldset:contains("Notification Method")');
+        if (notificationSection) {
+            const warningBanner = document.createElement('div');
+            warningBanner.className = 'alert alert-warning mt-2';
+            warningBanner.innerHTML = `
+                <small><i class="bi bi-info-circle me-1"></i> 
+                Note: On iOS devices, push notifications require installing this app to your home screen first.</small>
+            `;
+            notificationSection.appendChild(warningBanner);
+            
+            // Disable the push notification option for iOS non-standalone
+            const pushRadio = document.getElementById('notification-push');
+            if (pushRadio) {
+                const pushLabel = pushRadio.closest('label') || pushRadio.parentElement;
+                pushRadio.disabled = true;
+                if (pushLabel) {
+                    pushLabel.style.opacity = '0.5';
+                    // Add help text next to the radio button
+                    const helpText = document.createElement('span');
+                    helpText.className = 'ms-2 text-muted small';
+                    helpText.innerHTML = '(Install app first)';
+                    pushLabel.appendChild(helpText);
+                }
+            }
+        }
+    }
+}
+
+// Helper function to show iOS installation instructions
+function showIOSInstallInstructions() {
+    const content = `
+        <p>Push notifications on iOS require the app to be installed to your home screen first.</p>
+        <h6 class="mt-3 mb-2">To install this app:</h6>
+        <ol>
+            <li>Tap the <strong>Share</strong> button in Safari's toolbar</li>
+            <li>Scroll down and tap <strong>Add to Home Screen</strong></li>
+            <li>Confirm by tapping <strong>Add</strong></li>
+            <li>Launch the app from your home screen</li>
+            <li>Then try enabling notifications again</li>
+        </ol>
+        <p class="mt-3 small text-muted">Apple requires web apps to be installed before they can request notification permissions.</p>
+    `;
+    
+    showNotification('Installation Required', content);
+}
+
+// Helper function to show iOS notification help
+function showIOSNotificationHelp() {
+    const content = `
+        <p>Notification permissions are currently blocked for this app on your iOS device.</p>
+        <h6 class="mt-3 mb-2">To enable notifications:</h6>
+        <ol>
+            <li>Open the <strong>Settings</strong> app on your iPhone or iPad</li>
+            <li>Scroll down and find <strong>Safari</strong></li>
+            <li>Tap on <strong>Advanced</strong> → <strong>Website Data</strong></li>
+            <li>Find and remove data for this website</li>
+            <li>Return to the app and try again</li>
+        </ol>
+        <p class="mt-2"><strong>Note:</strong> iOS has limited support for web notifications, even in installed PWAs.</p>
+    `;
+    
+    showNotification('iOS Notifications', content);
 }
 
 // Helper function to ensure no hidden fields have required attribute
@@ -801,7 +895,28 @@ async function saveProfile(e) {
         const contentDeliveryEmail = contentDelivery === 'app-email';
         
         // Get the notification method
-        const notificationMethod = document.querySelector('input[name="notification-method"]:checked').value;
+        let notificationMethod = document.querySelector('input[name="notification-method"]:checked').value;
+        
+        // iOS-specific check for push notifications
+        if (notificationMethod === 'push') {
+            // If iOS but not in standalone mode, don't allow push
+            if (IS_IOS && !IS_STANDALONE) {
+                // Switch to email notifications instead
+                notificationMethod = 'none';
+                
+                // Show installation instructions
+                setTimeout(() => {
+                    showIOSInstallInstructions();
+                }, 500);
+            } else if (Notification.permission !== 'granted') {
+                // For non-iOS: If permission not granted yet, try to request it
+                const granted = await requestNotificationPermission();
+                if (!granted) {
+                    // If permission denied, switch to none
+                    notificationMethod = 'none';
+                }
+            }
+        }
         
         // Check if phone number is required but missing
         const mobileInput = document.getElementById('profile-mobile');
@@ -1040,7 +1155,7 @@ async function updateUserNotificationMethodToPush() {
 
 // Helper function to get auth token
 async function getAuthToken() {
-	 await window.waitForAuthStability();
+    await window.waitForAuthStability();
     try {
         const { data } = await supabase.auth.getSession();
         return data?.session?.access_token;
@@ -1059,3 +1174,12 @@ function fileToBase64(file) {
         reader.readAsDataURL(file);
     });
 }
+
+// Add this to ensure notification handlers are initialized when the profile view is shown
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle notification section when profile view is shown
+    document.getElementById('nav-profile').addEventListener('click', function() {
+        // Wait for profile to load then initialize notifications
+        setTimeout(initProfileNotifications, 500);
+    });
+});
