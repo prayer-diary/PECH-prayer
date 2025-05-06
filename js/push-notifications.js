@@ -1,11 +1,12 @@
 // Push Notifications Module
 // Manages push notification subscriptions and permissions
 
-// Constants
-const PERMISSION_PROMPT_KEY = 'pushNotificationPermissionPromptShown';
-const PERMISSION_PROMPT_DELAY = 3000; // 3 seconds
-const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-const IS_STANDALONE = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+// Constants - Use window namespacing to avoid redeclaration issues
+window.PUSH_NOTIFICATION = window.PUSH_NOTIFICATION || {};
+window.PUSH_NOTIFICATION.PERMISSION_PROMPT_KEY = 'pushNotificationPermissionPromptShown';
+window.PUSH_NOTIFICATION.PERMISSION_PROMPT_DELAY = 3000; // 3 seconds
+window.PUSH_NOTIFICATION.IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+window.PUSH_NOTIFICATION.IS_STANDALONE = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
 
 // Variable to track if initialization has been done
 let pushInitialized = false;
@@ -46,7 +47,7 @@ async function initializePushNotifications() {
     console.log('Initializing push notifications');
     
     // iOS-specific early check
-    if (IS_IOS && !IS_STANDALONE) {
+    if (window.PUSH_NOTIFICATION.IS_IOS && !window.PUSH_NOTIFICATION.IS_STANDALONE) {
       console.log('iOS device detected but not in standalone mode, skipping push initialization');
       return;
     }
@@ -285,9 +286,9 @@ async function requestNotificationPermission() {
   }
   
   // Check if we're on iOS
-  if (IS_IOS) {
+  if (window.PUSH_NOTIFICATION.IS_IOS) {
     // Apple requires PWAs to be in standalone mode (installed) for notifications
-    if (!IS_STANDALONE) {
+    if (!window.PUSH_NOTIFICATION.IS_STANDALONE) {
       console.log('iOS device detected but not in standalone mode');
       
       // Show special iOS install prompt
@@ -342,7 +343,7 @@ async function requestNotificationPermission() {
     console.error('Error requesting notification permission:', error);
     
     // Special handling for iOS permission errors
-    if (IS_IOS) {
+    if (window.PUSH_NOTIFICATION.IS_IOS) {
       showIOSNotificationHelp();
     }
     
@@ -354,7 +355,7 @@ async function requestNotificationPermission() {
 function showCustomPermissionPrompt() {
   return new Promise((resolve) => {
     // Check if we've shown this prompt before
-    const promptShown = localStorage.getItem(PERMISSION_PROMPT_KEY);
+    const promptShown = localStorage.getItem(window.PUSH_NOTIFICATION.PERMISSION_PROMPT_KEY);
     if (promptShown) {
       // If we've shown it before, just proceed to browser prompt
       resolve(true);
@@ -384,7 +385,7 @@ function showCustomPermissionPrompt() {
     // Add button listeners
     document.getElementById('notification-allow-btn').addEventListener('click', () => {
       // Mark prompt as shown
-      localStorage.setItem(PERMISSION_PROMPT_KEY, 'true');
+      localStorage.setItem(window.PUSH_NOTIFICATION.PERMISSION_PROMPT_KEY, 'true');
       // Remove the prompt
       promptElement.classList.remove('show');
       setTimeout(() => {
