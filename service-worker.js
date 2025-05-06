@@ -5,9 +5,9 @@
 const APP_VERSION = '1.0.017'; // Change this version when deploying a new version
 
 // Use APP_VERSION and timestamp for cache busting
-const CACHE_NAME = `prayer-diary-${APP_VERSION}-${Date.now()}`;
+const CACHE_NAME = `PECH-prayer-${APP_VERSION}-${Date.now()}`;
 // Determine base path - for both local dev and GitHub Pages deployment
-const BASE_PATH = self.location.pathname.includes('/prayer-diary') ? '/prayer-diary' : '';
+const BASE_PATH = self.location.pathname.includes('/PECH-prayer') ? '/PECH-prayer' : '';
 
 const urlsToCache = [
   BASE_PATH + '/',
@@ -235,7 +235,7 @@ self.addEventListener('push', event => {
     badge: notificationData.badge,
     image: notificationData.image,  // Optional larger image
     data: notificationData.data || { url: '/' },
-    tag: notificationData.tag || 'prayer-diary-notification',
+    tag: notificationData.tag || 'PECH-prayer-notification',
     renotify: notificationData.renotify || false,
     requireInteraction: notificationData.requireInteraction || true,
     vibrate: [100, 50, 100, 50, 100],

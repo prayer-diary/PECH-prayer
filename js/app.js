@@ -520,8 +520,8 @@ function registerServiceWorkerWithPushSupport() {
 });
 
 // Register the service worker with the correct path
-const swPath = window.location.pathname.includes('/prayer-diary') ? '/prayer-diary/service-worker.js' : '/service-worker.js';
-const swScope = window.location.pathname.includes('/prayer-diary') ? '/prayer-diary/' : '/';
+const swPath = window.location.pathname.includes('/PECH-prayer') ? '/PECH-prayer/service-worker.js' : '/service-worker.js';
+const swScope = window.location.pathname.includes('/PECH-prayer') ? '/PECH-prayer/' : '/';
 
 console.log('[Client] Registering service worker at:', swPath, 'with scope:', swScope);
 

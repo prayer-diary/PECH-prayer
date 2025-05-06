@@ -1239,7 +1239,7 @@ async function createSuperAdmin() {
                     full_name: 'Super Admin'
                 },
                 // Use the GitHub Pages URL for testing
-                emailRedirectTo: 'https://serviceplanningpech.github.io/prayer-diary'
+                emailRedirectTo: 'https:/prayer-diary.github.io/PECH-prayer'
             }
         });
         

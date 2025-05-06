@@ -92,7 +92,7 @@ serve(async (req) => {
     }
 
     // Get the base URL from environment variable or use the GitHub Pages URL as default
-    const BASE_URL = Deno.env.get('APP_URL') || 'https://serviceplanningpech.github.io/prayer-diary';
+    const BASE_URL = Deno.env.get('APP_URL') || 'https://prayer-diary.github.io/PECH-prayer';
 
     // Prepare notification payload with absolute URLs for icons
     const notificationPayload = JSON.stringify({

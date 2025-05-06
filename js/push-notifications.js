@@ -172,11 +172,11 @@ async function ensureServiceWorkerReady() {
       }
       
       // Our own registration logic as backup
-      const swPath = window.location.pathname.includes('/prayer-diary') ? 
-                    '/prayer-diary/service-worker.js' : 
+      const swPath = window.location.pathname.includes('/PECH-prayer') ? 
+                    '/PECH-prayer/service-worker.js' : 
                     '/service-worker.js';
-      const swScope = window.location.pathname.includes('/prayer-diary') ? 
-                     '/prayer-diary/' : 
+      const swScope = window.location.pathname.includes('/PECH-prayer') ? 
+                     '/PECH-prayer/' : 
                      '/';
       
       console.log('[Push] Registering service worker at:', swPath);
@@ -610,7 +610,7 @@ async function testPushNotification() {
         requireInteraction: true,
         renotify: true,
         vibrate: [100, 50, 100, 50, 100, 50, 100],
-        tag: 'prayer-diary-test-' + Date.now()
+        tag: 'PECH-prayer-test-' + Date.now()
       }
     });
     

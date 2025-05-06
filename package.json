@@ -1,21 +1,10 @@
 {
-  "name": "prayer-diary",
+  "name": "PECH prayer",
   "version": "1.0.0",
   "description": "A Progressive Web App for church prayer ministry management",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "cypress:open": "cypress open",
-    "cypress:run": "cypress run",
-    "test:registration": "cypress run --spec \"cypress/e2e/user_registration.cy.js\"",
-    "test:registration:debug": "cypress run --spec \"cypress/e2e/user_registration.cy.js\" --browser chrome --no-exit",
-    "test:login": "cypress run --spec \"cypress/e2e/login_existing_user.cy.js\"",
-    "test:mock": "cypress run --spec \"cypress/e2e/mock_registration.cy.js\"",
-    "studio:record": "cypress open --e2e --browser chrome --spec \"cypress/e2e/studio_login_recording.cy.js\"",
-    "test:slow-login": "cypress open --e2e --browser chrome --spec \"cypress/e2e/slow_login.cy.js\"",
-    "studio:template": "cypress open --e2e --browser chrome --spec \"cypress/e2e/studio_template.cy.js\"",
-    "approve:users": "cypress run --spec \"cypress/e2e/enhanced_bulk_approval.cy.js\"",
-    "approve:users:debug": "cypress open --e2e --browser chrome --spec \"cypress/e2e/enhanced_bulk_approval.cy.js\""
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
     "prayer",
