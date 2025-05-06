@@ -1,109 +1,22 @@
 {
-  "name": "Prayer Diary",
-  "short_name": "PECH Prayer",
+  "name": "PECH Prayer Diary",
+  "short_name": "Prayer Diary",
   "description": "A prayer calendar and updates app for church members",
-  "start_url": "./index.html",
-  "display": "standalone",
-  "background_color": "#483D8B",
   "theme_color": "#483D8B",
-  "orientation": "portrait-primary",
-  "categories": ["lifestyle", "religion", "social"],
-  "dir": "ltr",
-  "lang": "en-GB",
-  "scope": "./",
-  "prefer_related_applications": false,
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/",
+  "start_url": "/",
   "icons": [
-    {
-      "src": "img/icons/android/android-launchericon-48-48.png",
-      "sizes": "48x48",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "img/icons/android/android-launchericon-72-72.png",
-      "sizes": "72x72",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "img/icons/android/android-launchericon-96-96.png",
-      "sizes": "96x96",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "img/icons/android/android-launchericon-144-144.png",
-      "sizes": "144x144",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "img/icons/android/android-launchericon-192-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "img/icons/android/android-launchericon-512-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "img/icons/ios/192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "img/icons/ios/512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
     {
       "src": "img/icons/ios/16.png",
       "sizes": "16x16",
       "type": "image/png"
     },
     {
-      "src": "img/icons/ios/20.png",
-      "sizes": "20x20",
-      "type": "image/png"
-    },
-    {
-      "src": "img/icons/ios/29.png",
-      "sizes": "29x29",
-      "type": "image/png"
-    },
-    {
       "src": "img/icons/ios/32.png",
       "sizes": "32x32",
-      "type": "image/png"
-    },
-    {
-      "src": "img/icons/ios/40.png",
-      "sizes": "40x40",
-      "type": "image/png"
-    },
-    {
-      "src": "img/icons/ios/50.png",
-      "sizes": "50x50",
-      "type": "image/png"
-    },
-    {
-      "src": "img/icons/ios/57.png",
-      "sizes": "57x57",
-      "type": "image/png"
-    },
-    {
-      "src": "img/icons/ios/58.png",
-      "sizes": "58x58",
-      "type": "image/png"
-    },
-    {
-      "src": "img/icons/ios/60.png",
-      "sizes": "60x60",
       "type": "image/png"
     },
     {
@@ -122,23 +35,8 @@
       "type": "image/png"
     },
     {
-      "src": "img/icons/ios/80.png",
-      "sizes": "80x80",
-      "type": "image/png"
-    },
-    {
-      "src": "img/icons/ios/87.png",
-      "sizes": "87x87",
-      "type": "image/png"
-    },
-    {
-      "src": "img/icons/ios/100.png",
-      "sizes": "100x100",
-      "type": "image/png"
-    },
-    {
-      "src": "img/icons/ios/114.png",
-      "sizes": "114x114",
+      "src": "img/icons/ios/96.png",
+      "sizes": "96x96",
       "type": "image/png"
     },
     {
@@ -162,14 +60,15 @@
       "type": "image/png"
     },
     {
-      "src": "img/icons/ios/167.png",
-      "sizes": "167x167",
-      "type": "image/png"
-    },
-    {
       "src": "img/icons/ios/180.png",
       "sizes": "180x180",
       "type": "image/png"
+    },
+    {
+      "src": "img/icons/ios/192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "img/icons/ios/256.png",
@@ -177,89 +76,91 @@
       "type": "image/png"
     },
     {
-      "src": "img/icons/ios/1024.png",
-      "sizes": "1024x1024",
+      "src": "img/icons/ios/512.png",
+      "sizes": "512x512",
       "type": "image/png"
     },
     {
-      "src": "img/icons/windows11/Square44x44Logo.scale-100.png",
-      "sizes": "44x44",
-      "type": "image/png",
-      "purpose": "any",
-      "platform": "windows"
-    },
-    {
-      "src": "img/icons/windows11/Square150x150Logo.scale-100.png",
-      "sizes": "150x150",
-      "type": "image/png",
-      "purpose": "any",
-      "platform": "windows"
-    },
-    {
-      "src": "img/icons/windows11/Wide310x150Logo.scale-100.png",
-      "sizes": "310x150",
-      "type": "image/png",
-      "purpose": "any",
-      "platform": "windows"
-    },
-    {
-      "src": "img/icons/windows11/SmallTile.scale-100.png",
-      "sizes": "71x71",
-      "type": "image/png",
-      "purpose": "any",
-      "platform": "windows"
-    },
-    {
-      "src": "img/icons/windows11/LargeTile.scale-100.png",
-      "sizes": "310x310",
-      "type": "image/png",
-      "purpose": "any",
-      "platform": "windows"
-    },
-    {
-      "src": "img/icons/windows11/StoreLogo.scale-100.png",
-      "sizes": "50x50",
-      "type": "image/png",
-      "purpose": "any",
-      "platform": "windows"
-    },
-    {
-      "src": "img/icons/windows11/SplashScreen.scale-100.png",
-      "sizes": "620x300",
-      "type": "image/png",
-      "purpose": "any",
-      "platform": "windows"
-    },
-    {
-      "src": "img/icons/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
+      "src": "img/icons/ios/1024.png",
+      "sizes": "1024x1024",
+      "type": "image/png"
     }
   ],
-  "screenshots": [],
   "shortcuts": [
     {
       "name": "Daily Prayer",
-      "url": "./index.html#calendar-view",
-      "description": "View today's prayer calendar"
+      "short_name": "Prayer",
+      "description": "View today's prayer items",
+      "url": "/?view=calendar",
+      "icons": [
+        {
+          "src": "img/icons/ios/192.png",
+          "sizes": "192x192"
+        }
+      ]
     },
     {
       "name": "Prayer Updates",
-      "url": "./index.html#updates-view",
-      "description": "View recent prayer updates"
+      "short_name": "Updates",
+      "description": "View prayer updates",
+      "url": "/?view=updates",
+      "icons": [
+        {
+          "src": "img/icons/ios/192.png",
+          "sizes": "192x192"
+        }
+      ]
     },
     {
       "name": "Urgent Prayers",
-      "url": "./index.html#urgent-view",
-      "description": "View urgent prayer requests"
+      "short_name": "Urgent",
+      "description": "View urgent prayer requests",
+      "url": "/?view=urgent",
+      "icons": [
+        {
+          "src": "img/icons/ios/192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ],
-  "display_override": ["window-controls-overlay", "standalone", "browser"],
+  "screenshots": [
+    {
+      "src": "img/screenshots/screenshot1.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "platform": "wide",
+      "label": "Daily Prayer Calendar"
+    },
+    {
+      "src": "img/screenshots/screenshot2.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "platform": "wide",
+      "label": "Prayer Updates"
+    }
+  ],
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "categories": ["lifestyle", "utilities"],
+  "lang": "en-GB",
+  "dir": "ltr",
+  "display_override": ["standalone", "window-controls-overlay"],
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
   "handle_links": "preferred",
   "launch_handler": {
-    "client_mode": ["navigate-existing", "auto"]
+    "client_mode": "auto"
   },
-  "permissions": ["push", "notifications"],
-  "gcm_sender_id": "103953800507"
+  "id": "pech-prayer-diary",
+  "share_target": {
+    "action": "/?share-target",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
 }

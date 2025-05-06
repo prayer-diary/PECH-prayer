@@ -1,369 +1,342 @@
-// Service Worker for Prayer Diary PWA - Updated with improved error handling and update notification
+// Service Worker for PECH Prayer Diary PWA
 
-// Define a version for the app that changes with each significant update
-// Note: This should match the version in config.js
-const APP_VERSION = '1.0.017'; // Change this version when deploying a new version
+// Cache version - update this number to force refresh of caches
+const CACHE_VERSION = '1.0.17';
+const CACHE_NAME = `prayer-diary-cache-${CACHE_VERSION}`;
 
-// Use APP_VERSION and timestamp for cache busting
-const CACHE_NAME = `PECH-prayer-${APP_VERSION}-${Date.now()}`;
-// Determine base path - for both local dev and GitHub Pages deployment
-const BASE_PATH = self.location.pathname.includes('/PECH-prayer') ? '/PECH-prayer' : '';
+// App shell files to cache initially
+const APP_SHELL_FILES = [
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/css/style.css',
+  '/css/bootstrap-morph.min.css',
+  '/css/mobile-nav.css',
+  '/js/app.js',
+  '/js/auth.js',
+  '/js/calendar.js',
+  '/js/updates.js',
+  '/js/urgent.js',
+  '/js/profile.js',
+  '/js/topics.js',
+  '/js/push-notifications.js',
+  '/js/config.js',
+  '/img/logo.png',
+  '/img/placeholder-profile.png',
+  '/img/icons/ios/192.png', // Using more generic iOS icon instead of Android-specific
+  '/img/icons/ios/512.png',
+  '/img/icons/ios/180.png'
+];
 
-const urlsToCache = [
-  BASE_PATH + '/',
-  BASE_PATH + '/index.html',
-  BASE_PATH + '/manifest.json',
-  BASE_PATH + '/css/style.css',
-  BASE_PATH + '/css/bootstrap-morph.min.css',
-  BASE_PATH + '/js/app.js',
-  BASE_PATH + '/js/auth.js',
-  BASE_PATH + '/js/ui.js',
-  BASE_PATH + '/js/calendar.js',
-  BASE_PATH + '/js/updates.js',
-  BASE_PATH + '/js/urgent.js',
-  BASE_PATH + '/js/profile.js',
-  BASE_PATH + '/js/admin.js',
-  BASE_PATH + '/js/notifications.js',
-  BASE_PATH + '/js/email-test.js',
-  BASE_PATH + '/js/config.js',
-  BASE_PATH + '/img/placeholder-profile.png',
-  BASE_PATH + '/img/logo.png',
-  BASE_PATH + '/img/prayer-banner.jpg',
-  BASE_PATH + '/img/icons/icon.svg',
-  BASE_PATH + '/img/icons/favicon.ico',
+// URLs to cache on install (in addition to APP_SHELL_FILES)
+// These are resources we know will be needed for initial app load
+const INITIAL_CACHE_URLS = [
+  // CDN resources
   'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css',
   'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css',
   'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js',
-  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
-  'https://cdn.quilljs.com/1.3.6/quill.snow.css',
-  'https://cdn.quilljs.com/1.3.6/quill.min.js'
+  'https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css',
+  'https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.min.js'
 ];
 
-// Install event - cache assets
-self.addEventListener('install', event => {
-  console.log('[Service Worker] Install event');
+// Resources that should not be cached
+const NO_CACHE_URLS = [
+  '/supabase',
+  'functions.supabase.co',
+  'supabase.co'
+];
+
+// Current version of the service worker
+const CURRENT_VERSION = CACHE_VERSION;
+
+// Install event - cache the app shell files
+self.addEventListener('install', (event) => {
+  console.log('[Service Worker] Installing new version:', CURRENT_VERSION);
   
-  // Force the waiting service worker to become the active service worker immediately
+  // Skip waiting - activate immediately
   self.skipWaiting();
   
+  // Cache app shell and initial resources
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('Opened cache');
-        // Use a simpler caching approach - add what we can, ignore failures
-        return Promise.allSettled(
-          urlsToCache.map(url => {
-            // Skip non-HTTP URLs if any are in the list
-            if (!url.startsWith('http:') && !url.startsWith('https:') && !url.startsWith('/')) {
-              console.warn('Skipping non-HTTP URL in cache list:', url);
-              return Promise.resolve();
-            }
-            
-            // Attempt to cache each asset, but don't let failures stop the service worker from installing
-            return fetch(url, { mode: 'no-cors' })
-              .then(response => {
-                if (response.status === 200 || response.type === 'opaque') {
-                  try {
-                    return cache.put(url, response);
-                  } catch (cacheError) {
-                    console.warn('Could not cache asset:', url, cacheError.message);
-                    return Promise.resolve();
-                  }
-                }
-              })
-              .catch(error => {
-                console.warn('Could not fetch asset:', url, error.message);
-                // Continue despite the error
-                return Promise.resolve();
-              });
-          })
-        );
-      })
-      .catch(error => {
-        console.error('Cache opening failed:', error);
-      })
+    caches.open(CACHE_NAME).then((cache) => {
+      console.log('[Service Worker] Caching app shell and initial resources');
+      // Add all APP_SHELL_FILES to cache
+      return cache.addAll([...APP_SHELL_FILES, ...INITIAL_CACHE_URLS])
+        .then(() => {
+          console.log('[Service Worker] Successfully cached app shell and initial resources');
+        })
+        .catch((error) => {
+          console.error('[Service Worker] Error caching app shell files:', error);
+          // Continue even if some files fail to cache
+          return Promise.resolve();
+        });
+    })
   );
 });
 
-// Activate event - clean up old caches and take control
-self.addEventListener('activate', event => {
-  console.log('[Service Worker] Activate event');
+// Activate event - cleanup old caches
+self.addEventListener('activate', (event) => {
+  console.log('[Service Worker] Activating new version:', CURRENT_VERSION);
   
-  const cacheWhitelist = [CACHE_NAME];
+  // Take control of all clients
   event.waitUntil(
-    Promise.all([
-      // Clean up old caches
-      caches.keys().then(cacheNames => {
+    clients.claim().then(() => {
+      // Cleanup old caches
+      return caches.keys().then((cacheNames) => {
         return Promise.all(
-          cacheNames.map(cacheName => {
-            if (cacheWhitelist.indexOf(cacheName) === -1) {
-              console.log('Deleting old cache:', cacheName);
+          cacheNames.map((cacheName) => {
+            if (cacheName !== CACHE_NAME && cacheName.startsWith('prayer-diary-cache-')) {
+              console.log('[Service Worker] Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
           })
         );
-      }),
-      // Take control of all clients immediately
-      self.clients.claim().then(() => {
-        console.log('[Service Worker] Claimed all clients');
-        
-        // Notify all clients that the service worker is active
-        self.clients.matchAll().then(clients => {
-          clients.forEach(client => {
-            client.postMessage({
-              type: 'SW_ACTIVATED',
-              version: APP_VERSION
-            });
+      });
+    }).then(() => {
+      // Notify all clients that service worker is activated
+      return self.clients.matchAll().then((clients) => {
+        clients.forEach(client => {
+          client.postMessage({
+            type: 'SW_ACTIVATED',
+            version: CURRENT_VERSION
           });
         });
-      })
-    ])
+      });
+    })
   );
+  
+  // Ensure this event completes
+  event.waitUntil(self.clients.claim());
 });
 
-// Fetch event - serve from cache, fall back to network
-self.addEventListener('fetch', event => {
-  // Skip certain requests that shouldn't be cached
-  
-  // Skip if the request URL doesn't use http/https protocol
+// Fetch event - network-first strategy for API, cache-first for static assets
+self.addEventListener('fetch', (event) => {
+  // Skip cross-origin requests (like Supabase API)
   const url = new URL(event.request.url);
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    return; // Skip non-HTTP(S) requests like chrome-extension:// URLs
-  }
   
-  // Skip Supabase API requests
-  if (event.request.url.includes('supabase.co')) {
+  // Skip the fetch event for no-cache URLs (API requests, etc.)
+  if (shouldNotCache(event.request)) {
     return;
   }
   
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        // Cache hit - return response
-        if (response) {
-          return response;
+  // For GET requests of static assets, use cache-first strategy
+  if (event.request.method === 'GET' && isStaticAsset(event.request)) {
+    event.respondWith(
+      caches.match(event.request).then((cachedResponse) => {
+        // Return cached response if available
+        if (cachedResponse) {
+          return cachedResponse;
         }
         
-        // Clone the request
-        const fetchRequest = event.request.clone();
-        
-        return fetch(fetchRequest).then(
-          response => {
-            // Check if we received a valid response
-            if (!response || response.status !== 200 || response.type !== 'basic') {
-              return response;
-            }
-            
-            // Clone the response
-            const responseToCache = response.clone();
-            
-            // Only cache http/https requests - This is likely line 118 where the error occurs
-            if (event.request.url.startsWith('http:') || event.request.url.startsWith('https:')) {
-              try {
-                caches.open(CACHE_NAME)
-                  .then(cache => {
-                    try {
-                      cache.put(event.request, responseToCache)
-                        .catch(putError => {
-                          console.warn('Cache put error:', putError.message);
-                        });
-                    } catch (cacheError) {
-                      console.warn('Error in cache.put operation:', cacheError.message);
-                    }
-                  })
-                  .catch(openError => {
-                    console.warn('Error opening cache:', openError.message);
-                  });
-              } catch (error) {
-                console.warn('Error in caching block:', error.message);
-              }
-            } else {
-              console.log('Skipping non-HTTP URL for caching:', event.request.url.substring(0, 50) + '...');
-            }
-              
+        // Otherwise, fetch from network and cache
+        return fetch(event.request).then((response) => {
+          if (!response || response.status !== 200 || response.type !== 'basic') {
             return response;
           }
-        );
+          
+          // Clone the response to cache it and return it
+          const responseToCache = response.clone();
+          
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+          
+          return response;
+        }).catch((error) => {
+          console.error('[Service Worker] Fetch failed:', error);
+          // Could return a fallback response here if needed
+        });
       })
-      .catch(error => {
-        console.warn('Fetch handler error:', error.message);
-        // Fall back to network if anything fails
-        return fetch(event.request);
+    );
+  } else {
+    // For other requests, use network-first strategy
+    event.respondWith(
+      fetch(event.request).catch(() => {
+        return caches.match(event.request);
       })
-  );
+    );
+  }
 });
 
-// Push notification event
-self.addEventListener('push', event => {
-  console.log('[Service Worker] Push Received', event);
+// Push event handler - show notifications
+self.addEventListener('push', (event) => {
+  console.log('[Service Worker] Push received:', event);
   
-  // Get the base URL based on the service worker scope
-  const baseUrl = self.registration.scope;
-  
-  let notificationData = {
-    title: 'Prayer Diary',
-    body: 'New prayer update or request',
-    icon: `${baseUrl}img/icons/android/android-launchericon-192-192.png`,
-    badge: `${baseUrl}img/icons/android/android-launchericon-72-72.png`,
-    data: { url: '/' }
-  };
-  
-  // Try to extract the notification data from the push event
   if (event.data) {
     try {
-      const data = event.data.json();
-      console.log('[Service Worker] Push notification payload:', data);
+      // Parse the push data
+      const pushData = event.data.json();
       
-      // Merge with defaults, preserving required fields
-      notificationData = {
-        ...notificationData,
-        ...data,
-        // Ensure icon and badge have absolute paths if they don't already
-        icon: data.icon || notificationData.icon,
-        badge: data.badge || notificationData.badge
+      // Log the received notification data
+      console.log('[Service Worker] Push notification data:', pushData);
+      
+      // Set notification options based on the push data
+      const notificationTitle = pushData.title || 'Prayer Diary';
+      
+      const notificationOptions = {
+        body: pushData.body || 'New prayer notification',
+        icon: pushData.icon || '/img/icons/ios/192.png', // Default to generic iOS icon
+        badge: pushData.badge || '/img/icons/ios/72.png',
+        image: pushData.image || null,
+        vibrate: pushData.vibrate || [100, 50, 100],
+        data: pushData.data || {},
+        requireInteraction: pushData.requireInteraction || true,
+        actions: pushData.actions || [
+          {
+            action: 'view',
+            title: 'View'
+          }
+        ],
+        tag: pushData.tag || 'prayer-diary-notification',
+        renotify: pushData.renotify || true
       };
-    } catch (e) {
-      console.error('[Service Worker] Error parsing push data:', e);
-      // Just use default notification data
+      
+      // Wait until the notification is shown
+      event.waitUntil(
+        self.registration.showNotification(notificationTitle, notificationOptions)
+          .then(() => {
+            console.log('[Service Worker] Notification shown successfully');
+            
+            // After showing the notification, you might want to update some state or database
+            // through a fetch request to your API if needed
+          })
+          .catch(error => {
+            console.error('[Service Worker] Error showing notification:', error);
+          })
+      );
+    } catch (error) {
+      console.error('[Service Worker] Error processing push event:', error);
+      
+      // Fallback to a simple notification in case of error
+      event.waitUntil(
+        self.registration.showNotification('Prayer Diary', {
+          body: 'New notification from Prayer Diary',
+          icon: '/img/icons/ios/192.png'
+        })
+      );
     }
+  } else {
+    console.log('[Service Worker] Push event had no data');
   }
-  
-  // Set up notification options with best practices
-  const options = {
-    body: notificationData.body,
-    icon: notificationData.icon,
-    badge: notificationData.badge,
-    image: notificationData.image,  // Optional larger image
-    data: notificationData.data || { url: '/' },
-    tag: notificationData.tag || 'PECH-prayer-notification',
-    renotify: notificationData.renotify || false,
-    requireInteraction: notificationData.requireInteraction || true,
-    vibrate: [100, 50, 100, 50, 100],
-    actions: notificationData.actions || [
-      {
-        action: 'view',
-        title: 'View'
-      }
-    ],
-    // Ensure it's not silent
-    silent: false,
-    // These options help with visuals on mobile
-    timestamp: notificationData.timestamp || Date.now(),
-    dir: 'auto'
-  };
-  
-  console.log('[Service Worker] Showing notification with options:', options);
-  
-  // CRITICAL: Use waitUntil to keep service worker alive until notification is shown
-  event.waitUntil(
-    self.registration.showNotification(notificationData.title, options)
-      .then(() => {
-        console.log('[Service Worker] Notification successfully displayed');
-        return Promise.resolve();
-      })
-      .catch(error => {
-        console.error('[Service Worker] Error showing notification:', error);
-        return Promise.resolve();
-      })
-  );
 });
 
-// Notification click event
-self.addEventListener('notificationclick', event => {
-  console.log('[Service Worker] Notification clicked:', event);
+// Notification click event - open the app or specific page
+self.addEventListener('notificationclick', (event) => {
+  console.log('[Service Worker] Notification click received:', event);
   
   // Close the notification
   event.notification.close();
   
-  // Get the action (if any)
-  const action = event.action;
+  // Handle notification actions
+  let targetUrl = '/';
   
-  // Extract the URL to navigate to
-  let url = '/';
-  if (event.notification.data && event.notification.data.url) {
-    url = event.notification.data.url;
+  if (event.action === 'view' && event.notification.data && event.notification.data.url) {
+    targetUrl = event.notification.data.url;
+  } else if (event.notification.data && event.notification.data.url) {
+    // Default action when clicking the notification body
+    targetUrl = event.notification.data.url;
   }
   
-  // Add the base path if not already included
-  if (!url.startsWith('http') && !url.startsWith('/')) {
-    url = `${BASE_PATH}/${url}`;
-  } else if (!url.startsWith('http') && !url.startsWith(BASE_PATH)) {
-    url = `${BASE_PATH}${url}`;
-  }
+  // Resolve the target URL to absolute URL
+  const baseUrl = self.location.origin;
+  const fullUrl = new URL(targetUrl, baseUrl).href;
   
-  console.log(`[Service Worker] Opening URL: ${url}`);
-  
-  // Handle the click event by opening or focusing on the relevant page
-  const notificationPromise = clients.matchAll({
-    type: 'window',
-    includeUncontrolled: true
-  })
-  .then(windowClients => {
-    // Check if there is already a window/tab open with the target URL
-    let matchingClient = null;
-    
-    for (let i = 0; i < windowClients.length; i++) {
-      const client = windowClients[i];
-      console.log(`[Service Worker] Checking client: ${client.url} (vs ${url})`);
+  // Open or focus the target URL in an existing window/tab if possible
+  event.waitUntil(
+    clients.matchAll({
+      type: 'window',
+      includeUncontrolled: true
+    }).then((windowClients) => {
+      // Check if there's already a window/tab open with our URL
+      const matchingClient = windowClients.find((client) => {
+        return client.url === fullUrl || client.url.startsWith(baseUrl);
+      });
       
-      // If so, just focus it
-      if (client.url.includes(url) && 'focus' in client) {
-        return client.focus();
+      // If found, focus it and navigate if needed
+      if (matchingClient) {
+        console.log('[Service Worker] Using existing window');
+        
+        return matchingClient.focus().then((focusedClient) => {
+          // Only navigate if we're not already at the target URL
+          if (focusedClient.url !== fullUrl) {
+            return focusedClient.navigate(fullUrl);
+          }
+        });
       }
       
-      // If we didn't find an exact match, save the first client we find
-      if (!matchingClient && 'navigate' in client) {
-        matchingClient = client;
-      }
-    }
-    
-    // If we found a client but not an exact URL match, navigate that client
-    if (matchingClient) {
-      console.log(`[Service Worker] Navigating existing client to: ${url}`);
-      return matchingClient.navigate(url).then(navigatedClient => navigatedClient.focus());
-    }
-    
-    // If not, open a new window/tab
-    console.log(`[Service Worker] Opening new window for: ${url}`);
-    return clients.openWindow(url);
-  })
-  .catch(err => {
-    console.error('[Service Worker] Error handling notification click:', err);
-  });
-  
-  event.waitUntil(notificationPromise);
+      // Otherwise, open a new window/tab
+      console.log('[Service Worker] Opening new window');
+      return clients.openWindow(fullUrl);
+    })
+  );
 });
 
-// Handle messages from the client
-self.addEventListener('message', event => {
-  console.log('[Service Worker] Received message:', event.data);
+// Listen for messages from the clients
+self.addEventListener('message', (event) => {
+  console.log('[Service Worker] Message received:', event.data);
   
-  if (event.data && event.data.action === 'CHECK_FOR_UPDATES') {
-    // Store the version that was last used by the client
-    const clientVersion = event.data.version;
-    
-    // If the current service worker version is different from the client's version
-    if (clientVersion && clientVersion !== APP_VERSION) {
-      console.log(`Update available: Client is on ${clientVersion}, Service Worker is on ${APP_VERSION}`);
-      
-      // Notify the client about the update
-      self.clients.matchAll().then(clients => {
-        clients.forEach(client => {
-          client.postMessage({
-            type: 'UPDATE_AVAILABLE',
-            currentVersion: APP_VERSION,
-            clientVersion: clientVersion
-          });
-        });
-      });
-    } else {
-      console.log('No update available or versions match');
-    }
-  }
-  
-  // Handle skipWaiting message to force immediate activation
+  // Handle skipWaiting message from clients
   if (event.data && event.data.action === 'skipWaiting') {
-    console.log('[Service Worker] Skip waiting and activate immediately');
+    console.log('[Service Worker] Skip waiting requested, activating immediately');
     self.skipWaiting();
   }
+  
+  // Handle check for updates
+  if (event.data && event.data.action === 'CHECK_FOR_UPDATES') {
+    const clientVersion = event.data.version;
+    
+    // If versions don't match, notify client of update
+    if (clientVersion !== CURRENT_VERSION) {
+      console.log(`[Service Worker] Version mismatch: Client ${clientVersion}, SW ${CURRENT_VERSION}`);
+      
+      event.source.postMessage({
+        type: 'UPDATE_AVAILABLE',
+        currentVersion: CURRENT_VERSION,
+        clientVersion
+      });
+    } else {
+      console.log(`[Service Worker] Versions match: ${clientVersion}`);
+    }
+  }
 });
+
+// Helper function to check if a request should not be cached
+function shouldNotCache(request) {
+  const url = new URL(request.url);
+  
+  // Never cache API requests, authentication, or CORS requests
+  if (request.method !== 'GET') {
+    return true;
+  }
+  
+  // Check against the NO_CACHE_URLS list
+  return NO_CACHE_URLS.some(pattern => url.href.includes(pattern));
+}
+
+// Helper function to determine if a request is for a static asset
+function isStaticAsset(request) {
+  const url = new URL(request.url);
+  const path = url.pathname;
+  
+  // Check file extensions for common static assets
+  const staticExtensions = [
+    '.html', '.css', '.js', '.json', '.png', '.jpg', '.jpeg', 
+    '.gif', '.svg', '.webp', '.ico', '.woff', '.woff2', '.ttf', '.eot'
+  ];
+  
+  // Check if URL is same origin (same website)
+  const isSameOrigin = url.origin === self.location.origin;
+  
+  // Check if it's a static file extension
+  const hasStaticExtension = staticExtensions.some(ext => path.endsWith(ext));
+  
+  // Check if it's a root page or static directory
+  const isRootOrStaticDir = path === '/' || 
+                          path === '/index.html' || 
+                          path.startsWith('/css/') || 
+                          path.startsWith('/js/') || 
+                          path.startsWith('/img/');
+  
+  // Consider it static if it's same origin and either has a static extension or is a root/static directory
+  return isSameOrigin && (hasStaticExtension || isRootOrStaticDir);
+}

@@ -60,12 +60,13 @@ serve(async (req) => {
       }
     )
 
-    // Fetch push subscriptions for the specified users
-    // Note: We're not filtering by active here in case the column doesn't exist yet
+    // Fetch active push subscriptions for the specified users
+    // Now we can directly filter by active=true since we know the column exists
     const { data: subscriptions, error: fetchError } = await supabaseAdmin
       .from('push_subscriptions')
       .select('*')
       .in('user_id', userIds)
+      .eq('active', true)
 
     if (fetchError) {
       throw new Error(`Error fetching subscriptions: ${fetchError.message}`)
@@ -98,8 +99,8 @@ serve(async (req) => {
     const notificationPayload = JSON.stringify({
       title: title,
       body: message,
-      icon: `${BASE_URL}/img/icons/android/android-launchericon-192-192.png`,
-      badge: `${BASE_URL}/img/icons/android/android-launchericon-72-72.png`,
+      icon: `${BASE_URL}/img/icons/ios/192.png`, // Using generic iOS icon
+      badge: `${BASE_URL}/img/icons/ios/72.png`, // Using generic iOS icon
       image: data?.image || null,  // Optional larger image to show in notification
       data: {
         dateOfArrival: Date.now(),
@@ -123,18 +124,9 @@ serve(async (req) => {
     const results = []
     let successCount = 0
     let failureCount = 0
-
-    // Filter subscriptions manually to handle missing active column
-    const activeSubscriptions = subscriptions.filter(sub => 
-      // Consider subscription active if active property is undefined or true
-      sub.active === undefined || sub.active === true
-    );
     
-    console.log(`Found ${activeSubscriptions.length} active subscriptions after filtering`);
-    
-    for (const subscription of activeSubscriptions) {
+    for (const subscription of subscriptions) {
       try {
-        // FIXED: Use subscription_data instead of subscription_object
         // Skip if subscription data is missing or invalid
         if (!subscription.subscription_data || !subscription.subscription_data.endpoint) {
           console.log(`Skipping invalid subscription for user ${subscription.user_id}`)
@@ -143,7 +135,7 @@ serve(async (req) => {
 
         // Send the notification with the correct field name and TTL
         await webpush.sendNotification(
-          subscription.subscription_data,  // Using subscription_data field
+          subscription.subscription_data,
           notificationPayload,
           {
             // Add TTL of 24 hours (in seconds) to ensure notifications don't expire too quickly
@@ -185,16 +177,11 @@ serve(async (req) => {
           // Subscription has expired or is no longer valid
           console.log(`Subscription ${subscription.id} is no longer valid, marking as inactive`)
           
-          try {
-            // Mark subscription as inactive
-            await supabaseAdmin
-              .from('push_subscriptions')
-              .update({ active: false })
-              .eq('id', subscription.id)
-          } catch (updateError) {
-            // Handle case where active column doesn't exist yet
-            console.log(`Could not mark subscription as inactive: ${updateError.message}`)
-          }
+          // Mark subscription as inactive
+          await supabaseAdmin
+            .from('push_subscriptions')
+            .update({ active: false })
+            .eq('id', subscription.id)
         }
 
         // Log the failure in the database
