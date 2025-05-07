@@ -6,7 +6,6 @@ window.PUSH_NOTIFICATION = window.PUSH_NOTIFICATION || {};
 window.PUSH_NOTIFICATION.PERMISSION_PROMPT_KEY = 'pushNotificationPermissionPromptShown';
 window.PUSH_NOTIFICATION.PERMISSION_PROMPT_DELAY = 3000; // 3 seconds
 window.PUSH_NOTIFICATION.IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-window.PUSH_NOTIFICATION.IS_STANDALONE = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
 
 // Variable to track if initialization has been done
 let pushInitialized = false;
@@ -21,6 +20,76 @@ document.addEventListener('login-state-changed', function(event) {
     setTimeout(initializePushNotifications, 2000);
   }
 });
+
+// Get iOS version information
+function getIOSVersion() {
+  if (!window.PUSH_NOTIFICATION.IS_IOS) return null;
+  
+  const match = navigator.userAgent.match(/OS (\d+)_(\d+)_?(\d+)?/);
+  return match ? {
+    major: parseInt(match[1], 10),
+    minor: parseInt(match[2], 10),
+    patch: parseInt(match[3] || 0, 10)
+  } : null;
+}
+
+// Check if iOS version supports push API (16.4+)
+function isIOSVersionSupported() {
+  const version = getIOSVersion();
+  if (!version) return false;
+  
+  // Push API is supported from iOS 16.4+
+  return (version.major > 16) || (version.major === 16 && version.minor >= 4);
+}
+
+// More reliable standalone mode detection for iOS
+function isIOSStandalone() {
+  if (window.PUSH_NOTIFICATION.IS_IOS) {
+    // For iOS devices, navigator.standalone is the reliable property
+    return !!window.navigator.standalone;
+  }
+  
+  // For other platforms, use the display-mode media query
+  return window.matchMedia('(display-mode: standalone)').matches;
+}
+
+// Enhanced function to check if device is in standalone mode
+window.isInStandaloneMode = function isInStandaloneMode() {
+  // Check multiple conditions to detect standalone mode
+  const displayModeStandalone = window.matchMedia('(display-mode: standalone)').matches;
+  const navigatorStandalone = window.navigator.standalone; // iOS Safari
+  const androidApp = document.referrer.includes('android-app://');
+  const installedFlag = localStorage.getItem('prayerDiaryInstalled') === 'true';
+  
+  // Log the detected mode for debugging
+  console.log('Mode detection:', {
+    displayModeStandalone,
+    navigatorStandalone,
+    androidApp,
+    installedFlag
+  });
+  
+  return displayModeStandalone || navigatorStandalone || androidApp || installedFlag;
+}
+
+// Advanced iOS debug logging
+function logIOSDebugInfo() {
+  if (!window.PUSH_NOTIFICATION.IS_IOS) return;
+  
+  const iosVersion = getIOSVersion();
+  console.log('iOS Push Notification Debug Info:', {
+    version: iosVersion ? `${iosVersion.major}.${iosVersion.minor}.${iosVersion.patch}` : 'Unknown',
+    standalone: window.navigator.standalone,
+    displayModeStandalone: window.matchMedia('(display-mode: standalone)').matches,
+    serviceWorkerSupported: 'serviceWorker' in navigator,
+    pushManagerSupported: 'PushManager' in window,
+    notificationSupported: 'Notification' in window,
+    notificationPermission: Notification.permission,
+    isVersionSupported: isIOSVersionSupported(),
+    isStandalone: isIOSStandalone(),
+    userAgent: navigator.userAgent
+  });
+}
 
 // Set up listeners for the notification permission UI
 function setupPushNotificationListeners() {
@@ -46,10 +115,25 @@ async function initializePushNotifications() {
   try {
     console.log('Initializing push notifications');
     
-    // iOS-specific early check
-    if (window.PUSH_NOTIFICATION.IS_IOS && !window.PUSH_NOTIFICATION.IS_STANDALONE) {
-      console.log('iOS device detected but not in standalone mode, skipping push initialization');
-      return;
+    // Log debug info for iOS devices
+    logIOSDebugInfo();
+    
+    // Check for iOS version support
+    if (window.PUSH_NOTIFICATION.IS_IOS) {
+      if (!isIOSVersionSupported()) {
+        console.log('iOS version does not support Push API (requires iOS 16.4+)');
+        return;
+      }
+      
+      // On iOS, we only proceed if in standalone mode (installed as app)
+      // But we use our improved detection method
+      if (!isIOSStandalone()) {
+        console.log('iOS device detected but not in standalone mode, skipping push initialization');
+        showIOSInstallInstructions();
+        return;
+      }
+      
+      console.log('iOS device in standalone mode with supported version, continuing with push initialization');
     }
     
     // Wait for auth to be stable before checking user preferences
@@ -105,11 +189,22 @@ async function initializePushNotifications() {
           const vapidPublicKey = await getVapidPublicKey();
           
           try {
-            // Create new subscription
-            subscription = await registration.pushManager.subscribe({
+            // Create new subscription with platform-specific options
+            const subscriptionOptions = {
               userVisibleOnly: true,
               applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
-            });
+            };
+            
+            // Add Safari-specific parameters if on iOS
+            if (window.PUSH_NOTIFICATION.IS_IOS) {
+              // When debugging, explicitly request the prompt
+              subscriptionOptions.prompt = true;
+              
+              // Include webPushId if registered with Apple
+              // subscriptionOptions.webPushId = 'web.com.yourcompany.yourapp';
+            }
+            
+            subscription = await registration.pushManager.subscribe(subscriptionOptions);
             
             console.log('Push subscription created successfully');
             
@@ -117,6 +212,18 @@ async function initializePushNotifications() {
             await saveSubscriptionToDatabase(subscription);
           } catch (subscribeError) {
             console.error('Failed to subscribe to push:', subscribeError);
+            
+            // Check if on iOS and provide specific guidance
+            if (window.PUSH_NOTIFICATION.IS_IOS) {
+              if (subscribeError.name === 'NotAllowedError') {
+                showIOSNotificationHelp();
+              } else {
+                // Handle other iOS-specific errors
+                const errorMessage = `iOS push registration error: ${subscribeError.message}`;
+                console.error(errorMessage);
+                showNotification('Push Registration Failed', errorMessage, 'error');
+              }
+            }
             return;
           }
         } else {
@@ -287,8 +394,15 @@ async function requestNotificationPermission() {
   
   // Check if we're on iOS
   if (window.PUSH_NOTIFICATION.IS_IOS) {
+    // Check iOS version first
+    if (!isIOSVersionSupported()) {
+      console.log('iOS version does not support Push API (requires iOS 16.4+)');
+      showNotification('Not Supported', 'Push notifications require iOS 16.4 or later.', 'warning');
+      return false;
+    }
+    
     // Apple requires PWAs to be in standalone mode (installed) for notifications
-    if (!window.PUSH_NOTIFICATION.IS_STANDALONE) {
+    if (!isIOSStandalone()) {
       console.log('iOS device detected but not in standalone mode');
       
       // Show special iOS install prompt
@@ -425,7 +539,7 @@ function showIOSNotificationHelp() {
       <li>Find and remove data for this website</li>
       <li>Return to the app and try again</li>
     </ol>
-    <p class="mt-2"><strong>Note:</strong> iOS has limited support for web notifications, even in installed PWAs.</p>
+    <p class="mt-2"><strong>Note:</strong> Push notifications on iOS require iOS 16.4 or later, and the app must be installed to your home screen.</p>
   `;
   
   showNotification('iOS Notifications', content);
@@ -514,16 +628,41 @@ async function subscribeToPushNotifications() {
     if (!subscription) {
       console.log('Creating new push subscription...');
       try {
-        subscription = await registration.pushManager.subscribe({
+        // Prepare subscription options with platform-specific settings
+        const subscriptionOptions = {
           userVisibleOnly: true,
           applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
-        });
+        };
+        
+        // Add Safari-specific parameters if on iOS
+        if (window.PUSH_NOTIFICATION.IS_IOS) {
+          // When debugging, explicitly request the prompt
+          subscriptionOptions.prompt = true;
+          
+          // Include webPushId if registered with Apple
+          // subscriptionOptions.webPushId = 'web.com.yourcompany.yourapp';
+        }
+        
+        subscription = await registration.pushManager.subscribe(subscriptionOptions);
         console.log('New push subscription created successfully');
       } catch (subError) {
         console.error('Failed to create push subscription:', subError);
-        if (Notification.permission === 'denied') {
+        
+        // Special handling for iOS errors
+        if (window.PUSH_NOTIFICATION.IS_IOS) {
+          if (subError.name === 'NotAllowedError') {
+            showIOSNotificationHelp();
+          } else {
+            // Handle other iOS-specific errors
+            const errorMessage = `iOS push registration error: ${subError.message}`;
+            console.error(errorMessage);
+            showNotification('Push Registration Failed', errorMessage, 'error');
+          }
+        } else if (Notification.permission === 'denied') {
           console.log('Permission denied for notifications');
+          showNotificationHelp();
         }
+        
         return false;
       }
     }
@@ -695,6 +834,11 @@ async function testPushNotification() {
     
     // Make sure we have an active service worker
     await ensureServiceWorkerReady();
+    
+    // If on iOS, log additional debug information
+    if (window.PUSH_NOTIFICATION.IS_IOS) {
+      logIOSDebugInfo();
+    }
     
     const { data, error } = await supabase.functions.invoke('send-push-notifications', {
       body: {
