@@ -165,8 +165,7 @@ async function initializePushNotifications() {
       
       // Only proceed if permission is granted
       if (permission === 'granted') {
-        // Ensure the service worker is registered and activated
-        await ensureServiceWorkerReady();
+ 
         
         // Now get the service worker registration
         const registration = window.swRegistration || await navigator.serviceWorker.ready;
@@ -245,142 +244,6 @@ async function initializePushNotifications() {
   } catch (error) {
     console.error('Error initializing push notifications:', error);
   }
-}
-
-// Helper function to ensure the service worker is registered and active
-async function ensureServiceWorkerReady() {
-  return new Promise(async (resolve, reject) => {
-    try {
-      // If we already have a global registration with active service worker, use it
-      if (window.swRegistration && window.swRegistration.active) {
-        console.log('[Push] Using existing active service worker registration');
-        resolve(window.swRegistration);
-        return;
-      }
-      
-      // If navigator.serviceWorker.controller exists, a service worker is controlling this page
-      if (navigator.serviceWorker.controller) {
-        console.log('[Push] Page is already controlled by service worker');
-        
-        // Get the registration for the controller
-        const registration = await navigator.serviceWorker.getRegistration();
-        if (registration) {
-          window.swRegistration = registration;
-          resolve(registration);
-          return;
-        }
-      }
-      
-      // If we reach here, we need to register or ensure a service worker
-      console.log('[Push] Ensuring service worker is registered and active');
-      
-      // Use the app's registration function if available
-      if (typeof registerServiceWorkerWithPushSupport === 'function') {
-        try {
-          const registration = await registerServiceWorkerWithPushSupport();
-          console.log('[Push] Service worker registered via app function');
-          resolve(registration);
-          return;
-        } catch (regError) {
-          console.error('[Push] Error registering service worker via app function:', regError);
-          // Continue with our own registration logic as backup
-        }
-      }
-      
-      // Our own registration logic as backup
-      const swPath = window.location.pathname.includes('/PECH-prayer') ? 
-                    '/PECH-prayer/service-worker.js' : 
-                    '/service-worker.js';
-      const swScope = window.location.pathname.includes('/PECH-prayer') ? 
-                     '/PECH-prayer/' : 
-                     '/';
-      
-      console.log('[Push] Registering service worker at:', swPath);
-      
-      // Setup activation message listener
-      const activationMessagePromise = new Promise(messageResolve => {
-        const messageHandler = event => {
-          if (event.data && event.data.type === 'SW_ACTIVATED') {
-            console.log('[Push] Received SW_ACTIVATED message');
-            navigator.serviceWorker.removeEventListener('message', messageHandler);
-            messageResolve();
-          }
-        };
-        
-        navigator.serviceWorker.addEventListener('message', messageHandler);
-      });
-      
-      // Register the service worker
-      const registration = await navigator.serviceWorker.register(swPath, { scope: swScope });
-      window.swRegistration = registration;
-      
-      // If already active, we're good
-      if (registration.active) {
-        console.log('[Push] Service worker is already active');
-        resolve(registration);
-        return;
-      }
-      
-      // Wait for activation
-      if (registration.installing) {
-        console.log('[Push] **NOT EXPECTING THIS Service worker is installing, waiting for activation');
-        
-        // Combination of statechange and message events
-        const activationPromise = new Promise(stateResolve => {
-          registration.installing.addEventListener('statechange', event => {
-            if (event.target.state === 'activated') {
-              console.log('[Push] Service worker activated via statechange');
-              stateResolve();
-            }
-          });
-        });
-        
-        // Wait for either activation method with a timeout
-        await Promise.race([
-          activationPromise,
-          activationMessagePromise,
-          new Promise(timeout => setTimeout(timeout, 5000))
-        ]);
-        
-        // At this point either we've activated or timed out
-        if (registration.active) {
-          console.log('[Push] Service worker is now active');
-          resolve(registration);
-        } else {
-          console.warn('[Push] Service worker activation timeout, continuing anyway');
-          resolve(registration);
-        }
-      } else if (registration.waiting) {
-        console.log('[Push] Service worker is waiting, sending skipWaiting message');
-        
-        // Send skipWaiting message
-        registration.waiting.postMessage({ action: 'skipWaiting' });
-        
-        // Wait for controller change with timeout
-        const controllerChangePromise = new Promise(controllerResolve => {
-          navigator.serviceWorker.addEventListener('controllerchange', () => {
-            console.log('[Push] Controller changed, service worker should be active');
-            controllerResolve();
-          }, { once: true });
-        });
-        
-        await Promise.race([
-          controllerChangePromise,
-          activationMessagePromise,
-          new Promise(timeout => setTimeout(timeout, 5000))
-        ]);
-        
-        // By now we should have an active service worker
-        resolve(registration);
-      } else {
-        console.warn('[Push] No installing or waiting worker found');
-        resolve(registration);
-      }
-    } catch (error) {
-      console.error('[Push] Error ensuring service worker is ready:', error);
-      reject(error);
-    }
-  });
 }
 
 // Request notification permission
@@ -591,12 +454,10 @@ async function subscribeToPushNotifications() {
       return false;
     }
     
-    // Ensure service worker is registered and active before proceeding
-    await ensureServiceWorkerReady();
     
     // Get the service worker registration - use global registration if available
     const registration = window.swRegistration || await navigator.serviceWorker.ready;
-    console.log('Service worker ready with scope:', registration.scope);
+    console.log('PUSH: Service worker ready with scope:', registration.scope);
     
     if (!registration || !registration.active) {
       console.error('No active service worker found, cannot subscribe to push');
@@ -832,8 +693,6 @@ async function testPushNotification() {
   try {
     console.log('Sending test push notification...');
     
-    // Make sure we have an active service worker
-    await ensureServiceWorkerReady();
     
     // If on iOS, log additional debug information
     if (window.PUSH_NOTIFICATION.IS_IOS) {
