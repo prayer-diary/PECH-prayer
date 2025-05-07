@@ -3,10 +3,14 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import * as webpush from 'npm:web-push@3.6.1';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.29.0';
 
-// Initialize Supabase client
+// Initialize Supabase client with persistSession set to false
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    persistSession: false, // Disable session persistence to avoid the warning
+  }
+});
 
 // Set up VAPID keys for Web Push
 const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY') || '';
@@ -16,11 +20,11 @@ const vapidSubject = Deno.env.get('VAPID_SUBJECT') || 'mailto:webmaster@pech.co.
 // Configure web push with VAPID credentials
 webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
 
-// CORS headers for the response - add your production domain here
+// CORS headers for the response - expanded to include x-client-info
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*', // In production, set to 'https://prayer.pech.co.uk'
+  'Access-Control-Allow-Origin': '*', // In production, consider limiting to 'https://prayer.pech.co.uk'
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Allow-Headers': 'content-type, authorization, x-client-info, apikey, X-Client-Info',
   'Access-Control-Max-Age': '86400',
 };
 
@@ -119,8 +123,8 @@ serve(async (req) => {
           const basePayload = {
             title: title || 'Prayer Diary',
             body: message || 'New prayer notification',
-            icon: 'https://prayer.pech.co.uk/img/icons/ios/192.png',
-            badge: 'https://prayer.pech.co.uk/img/icons/ios/72.png',
+            icon: '/img/icons/ios/192.png',
+            badge: '/img/icons/ios/72.png',
             data: {
               contentType: contentType || 'default',
               contentId: contentId || null,
@@ -137,6 +141,8 @@ serve(async (req) => {
             // Android-specific enhancements
             platformPayload = {
               ...basePayload,
+              // Set icon to the Android-specific notification icon
+              icon: '/img/icons/android/notification_icon.png',  // Use the white silhouette icon
               // Android requires these for optimal visibility
               priority: 'high',
               vibrate: [100, 50, 100, 50, 100, 50, 100],
@@ -152,7 +158,9 @@ serve(async (req) => {
               // Ensure timestamp is present for proper ordering
               timestamp: Date.now(),
               // Set silent to false to ensure notification alert
-              silent: false
+              silent: false,
+              // Add sound for better alerts
+              sound: 'default'
             };
           } else if (platform === 'ios') {
             // iOS-specific enhancements
@@ -232,7 +240,7 @@ serve(async (req) => {
     // Log summary
     logDebug(`Notification sending complete. Successful: ${successful}, Failed: ${failed}`);
     
-    // Return results
+    // Return results with CORS headers
     return new Response(
       JSON.stringify({
         success: true,
@@ -241,7 +249,13 @@ serve(async (req) => {
         failed: failed,
         results
       }),
-      { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      { 
+        status: 200, 
+        headers: { 
+          'Content-Type': 'application/json', 
+          ...corsHeaders 
+        } 
+      }
     );
   } catch (error) {
     // Handle unexpected errors
@@ -249,7 +263,13 @@ serve(async (req) => {
     
     return new Response(
       JSON.stringify({ error: `Error: ${error.message}` }),
-      { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      { 
+        status: 500, 
+        headers: { 
+          'Content-Type': 'application/json', 
+          ...corsHeaders 
+        } 
+      }
     );
   }
 });
