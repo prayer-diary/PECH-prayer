@@ -466,7 +466,8 @@ async function sendWhatsApp(to, templateName, titleParam = '') {
     }
 }
 
-// Send Push notifications for the specified type
+// Update the sendPushNotifications function in notifications.js to use the correct URL format
+
 async function sendPushNotifications(type, title, content, date) {
     await window.waitForAuthStability();
     try {
@@ -494,6 +495,9 @@ async function sendPushNotifications(type, title, content, date) {
             const userIds = users.map(user => user.id).filter(Boolean);
             
             if (userIds.length > 0) {
+                // Determine the correct view ID based on notification type
+                const viewId = type === 'prayer_update' ? 'updates-view' : 'urgent-view';
+                
                 // Call the Push Notification Edge Function
                 const result = await supabase.functions.invoke('send-push-notifications', {
                     body: {
@@ -503,7 +507,8 @@ async function sendPushNotifications(type, title, content, date) {
                         contentType: type,
                         contentId: null, // This would be the ID of the prayer update or urgent prayer
                         data: {
-                            url: type === 'prayer_update' ? '/updates-view' : '/urgent-view'
+                            // Use the viewId directly for more reliable navigation
+                            url: viewId 
                         }
                     }
                 });

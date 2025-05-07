@@ -99,35 +99,31 @@ serve(async (req) => {
     let navigationUrl = data?.url || '/';
 
     // Fix URL format for contentType-based navigation
-    // This ensures we use fragment-based navigation that works with single-page apps
-    if (contentType && !navigationUrl.includes('#')) {
-      // Map contentType to the appropriate view fragment
-      if (contentType === 'urgent') {
-        navigationUrl = '/#urgent-view';
-      } else if (contentType === 'update') {
-        navigationUrl = '/#updates-view';
+    // This ensures we use view IDs that match the app's internal structure
+    if (contentType && !navigationUrl.includes('-view')) {
+      // Map contentType to the appropriate view ID
+      if (contentType === 'urgent' || contentType === 'urgent_prayer') {
+        navigationUrl = 'urgent-view'; // Direct view ID for app navigation
+      } else if (contentType === 'update' || contentType === 'prayer_update') {
+        navigationUrl = 'updates-view'; // Direct view ID for app navigation
       } else if (contentType === 'calendar') {
-        navigationUrl = '/#calendar-view';
+        navigationUrl = 'calendar-view'; // Direct view ID for app navigation
       } else {
-        // Default to root with query parameter
-        navigationUrl = `/?type=${contentType}`;
+        // Default to a known view ID
+        navigationUrl = 'calendar-view';
       }
 
       // Add contentId as parameter if available
       if (contentId) {
-        // If using hash navigation use query parameter after hash
-        if (navigationUrl.includes('#')) {
-          navigationUrl += `?id=${contentId}`;
-        } else {
-          // Otherwise append as regular query parameter
-          navigationUrl += `&id=${contentId}`;
-        }
+        // Store contentId in the data object for internal navigation handling
+        if (!data) data = {};
+        data.contentId = contentId;
       }
     }
 
-    console.log(`Generated navigation URL: ${navigationUrl}`);
+    console.log(`Generated navigation target: ${navigationUrl}`);
 
-    // Prepare notification payload with absolute URLs for icons
+    // Prepare notification payload with absolute URLs for icons and correct data structure
     const notificationPayload = JSON.stringify({
       title: title,
       body: message,
@@ -137,9 +133,10 @@ serve(async (req) => {
       data: {
         dateOfArrival: Date.now(),
         primaryKey: 1,
-        url: navigationUrl, // Use the properly formatted URL
+        url: navigationUrl, // Use the properly formatted navigation target
         contentType,
-        contentId
+        contentId,
+        ...data // Include any additional data
       },
       // Visual options to improve notification appearance
       vibrate: [100, 50, 100],

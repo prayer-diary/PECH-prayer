@@ -1,7 +1,7 @@
 // Service Worker for PECH Prayer Diary PWA
 
 // Cache version - update this number to force refresh of caches
-const CACHE_VERSION = '1.1.006';
+const CACHE_VERSION = '1.1.008';
 const CACHE_NAME = `prayer-diary-cache-${CACHE_VERSION}`;
 
 // App shell files to cache initially
@@ -220,43 +220,64 @@ self.addEventListener('push', (event) => {
   }
 });
 
-// Notification click event - open the app or specific page
+// Add this code to service-worker.js just after the existing event listeners
+
+// Handle notification click and route to correct view
 self.addEventListener('notificationclick', (event) => {
   console.log('[Service Worker] Notification click received:', event);
   
   // Close the notification
   event.notification.close();
   
-  // Handle notification actions
-  let targetUrl = '/';
+  // Get the notification data
+  const notificationData = event.notification.data || {};
+  console.log('[Service Worker] Notification data:', notificationData);
   
-  if (event.action === 'view' && event.notification.data && event.notification.data.url) {
-    targetUrl = event.notification.data.url;
-  } else if (event.notification.data && event.notification.data.url) {
-    // Default action when clicking the notification body
-    targetUrl = event.notification.data.url;
+  // Determine the target URL based on notification data
+  let targetRoute = '/';
+  let targetViewId = 'calendar-view'; // Default view
+  
+  // Check for contentType in notification data
+  if (notificationData.contentType) {
+    // Map content types to view IDs
+    if (notificationData.contentType === 'prayer_update' || notificationData.contentType === 'update') {
+      targetViewId = 'updates-view';
+      targetRoute = '/updates-view';
+    } else if (notificationData.contentType === 'urgent_prayer' || notificationData.contentType === 'urgent') {
+      targetViewId = 'urgent-view';
+      targetRoute = '/urgent-view';
+    }
+  }
+  
+  // Override with custom URL if provided
+  if (notificationData.url) {
+    targetRoute = notificationData.url;
+    
+    // Extract view ID from URL if possible
+    if (targetRoute.includes('-view')) {
+      const match = targetRoute.match(/[a-z]+-view/);
+      if (match && match[0]) {
+        targetViewId = match[0];
+      }
+    }
   }
   
   // Resolve the target URL to absolute URL
   const baseUrl = self.location.origin;
   
-  // Handle fragment identifiers for SPA routing (handle both fragment and URL paths)
+  // Handle fragment identifiers for SPA routing
   let fullUrl;
-  if (targetUrl.startsWith('#')) {
-    // If it's just a fragment identifier, append it to base URL
-    fullUrl = baseUrl + '/' + targetUrl;
-  } else if (targetUrl.startsWith('/#')) {
-    // If it's a fragment with slash, prepend baseUrl
-    fullUrl = baseUrl + targetUrl;
-  } else if (targetUrl.startsWith('/')) {
-    // If it's a path starting with slash
-    fullUrl = baseUrl + targetUrl;
+  if (targetRoute.startsWith('#')) {
+    fullUrl = baseUrl + '/' + targetRoute;
+  } else if (targetRoute.startsWith('/#')) {
+    fullUrl = baseUrl + targetRoute;
+  } else if (targetRoute.startsWith('/')) {
+    fullUrl = baseUrl + targetRoute;
   } else {
-    // Otherwise, resolve as is
-    fullUrl = new URL(targetUrl, baseUrl).href;
+    fullUrl = new URL(targetRoute, baseUrl).href;
   }
   
-  console.log('[Service Worker] Navigation target:', fullUrl);
+  console.log('[Service Worker] Navigation target:', fullUrl, 'View ID:', targetViewId);
   
   // Open or focus the target URL in an existing window/tab if possible
   event.waitUntil(
@@ -269,21 +290,38 @@ self.addEventListener('notificationclick', (event) => {
         return client.url.startsWith(baseUrl);
       });
       
-      // If found, focus it and navigate if needed
+      // If found, focus it and navigate
       if (matchingClient) {
         console.log('[Service Worker] Using existing window');
         
         return matchingClient.focus().then((focusedClient) => {
-          // Only navigate if we're not already at the target URL
-          if (focusedClient.url !== fullUrl) {
-            return focusedClient.navigate(fullUrl);
-          }
+          // Post a message to the client to navigate to the target view
+          focusedClient.postMessage({
+            type: 'NAVIGATE_TO_VIEW',
+            viewId: targetViewId,
+            data: notificationData
+          });
+          
+          return focusedClient;
         });
       }
       
       // Otherwise, open a new window/tab
       console.log('[Service Worker] Opening new window');
-      return clients.openWindow(fullUrl);
+      return clients.openWindow(fullUrl).then(windowClient => {
+        // If we got a windowClient back, send navigation message after a delay
+        if (windowClient) {
+          // Wait a bit for the client to initialize before sending the message
+          setTimeout(() => {
+            windowClient.postMessage({
+              type: 'NAVIGATE_TO_VIEW',
+              viewId: targetViewId,
+              data: notificationData
+            });
+          }, 1500); // Delay to allow client initialization
+        }
+        return windowClient;
+      });
     })
   );
 });

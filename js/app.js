@@ -287,6 +287,75 @@ function initializeApp() {
     });
 }
 
+// Add this code to your app.js file, 
+// somewhere near the end of the initializeApp function or the end of the file
+
+// Listen for navigation messages from the service worker
+navigator.serviceWorker.addEventListener('message', function(event) {
+  // Check if the message is a navigation request
+  if (event.data && event.data.type === 'NAVIGATE_TO_VIEW') {
+    console.log('Received navigation request from service worker:', event.data);
+    
+    const viewId = event.data.viewId;
+    const notificationData = event.data.data || {};
+    
+    // Only proceed if view ID is valid
+    if (viewId && document.getElementById(viewId)) {
+      console.log(`Navigating to ${viewId} from notification click`);
+      
+      // Ensure the app is fully initialized before navigating
+      setTimeout(() => {
+        // If the app views aren't visible yet, make them visible
+        const appViews = document.getElementById('app-views');
+        const landingView = document.getElementById('landing-view');
+        
+        if (appViews && appViews.classList.contains('d-none')) {
+          appViews.classList.remove('d-none');
+        }
+        
+        if (landingView && !landingView.classList.contains('d-none')) {
+          landingView.classList.add('d-none');
+        }
+        
+        // Show the target view
+        showView(viewId);
+        
+        // Call the appropriate loader function based on the view ID
+        if (viewId === 'calendar-view' && typeof loadPrayerCalendar === 'function') {
+          loadPrayerCalendar();
+        }
+        else if (viewId === 'updates-view' && typeof loadPrayerUpdates === 'function') {
+          loadPrayerUpdates();
+          
+          // If we have an update ID, try to open that specific update
+          if (notificationData.contentId && typeof viewUpdate === 'function') {
+            setTimeout(() => {
+              viewUpdate(notificationData.contentId);
+            }, 500);
+          }
+        }
+        else if (viewId === 'urgent-view' && typeof loadUrgentPrayers === 'function') {
+          loadUrgentPrayers();
+          
+          // If we have an urgent prayer ID, try to open that specific urgent prayer
+          if (notificationData.contentId && typeof viewUrgentPrayer === 'function') {
+            setTimeout(() => {
+              viewUrgentPrayer(notificationData.contentId);
+            }, 500);
+          }
+        }
+        
+        // Show a toast notification to confirm navigation
+        if (typeof showToast === 'function') {
+          showToast('Notification', 'Navigated to ' + viewId.replace('-view', '') + ' view', 'info', 3000);
+        }
+      }, 300);
+    } else {
+      console.warn('Invalid view ID received from service worker:', viewId);
+    }
+  }
+});
+
 // Splash Screen functionality
 function initSplashScreen() {
     // Set the version number from APP_VERSION
