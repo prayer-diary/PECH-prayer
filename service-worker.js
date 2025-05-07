@@ -1,7 +1,7 @@
 // Service Worker for PECH Prayer Diary PWA
 
 // Cache version - update this number to force refresh of caches
-const CACHE_VERSION = '1.1.021';
+const CACHE_VERSION = '1.1.022';
 const CACHE_NAME = `prayer-diary-cache-${CACHE_VERSION}`;
 
 // App shell files to cache initially
@@ -26,7 +26,8 @@ const APP_SHELL_FILES = [
   '/img/icons/ios/192.png',
   '/img/icons/ios/512.png',
   '/img/icons/ios/180.png',
-  '/img/icons/ios/72.png'  // Added for badge icon
+  '/img/icons/ios/72.png',  // Added for badge icon
+  '/img/icons/android/notification_icon.png'  // Android-specific notification icon
 ];
 
 // URLs to cache on install (in addition to APP_SHELL_FILES)
@@ -171,31 +172,34 @@ self.addEventListener('push', (event) => {
       // Log the received notification data
       console.log('[Service Worker] Push notification data:', pushData);
       
+      // Detect Android platform
+      const isAndroid = /android/i.test(self.navigator.userAgent);
+      
       // Set notification options based on the push data
       const notificationTitle = pushData.title || 'Prayer Diary';
       
-      // Set appropriate notification icons
-      const isAndroid = /android/i.test(self.navigator.userAgent);
-      
-      // Enhanced notification options for Android
+      // Enhanced notification options with Android focus
       const notificationOptions = {
         body: pushData.body || 'New prayer notification',
-        icon: pushData.icon || '/img/icons/ios/192.png',  // Main icon
-        badge: pushData.badge || '/img/icons/ios/72.png', // Badge icon (shown in notification tray)
+        // Use platform-specific icons
+        icon: isAndroid ? '/img/icons/android/notification_icon.png' : '/img/icons/ios/192.png',
+        badge: pushData.badge || '/img/icons/ios/72.png',
         image: pushData.image || null,
-        vibrate: pushData.vibrate || [100, 50, 100],
+        vibrate: pushData.vibrate || [100, 50, 100, 50, 100, 50, 100],
         data: {
           ...pushData.data || {},
           timestamp: Date.now(),
           contentType: pushData.contentType || 'default',
-          contentId: pushData.contentId || null
+          contentId: pushData.contentId || null,
+          url: pushData.data?.url || '/',
+          viewId: getViewIdFromContentType(pushData.contentType)
         },
-        // These settings help ensure notifications are visible on Android
+        // Android settings for heads-up notifications
         requireInteraction: true,
-        tag: pushData.tag || `prayer-diary-${Date.now()}`, // Unique tag to prevent grouping
+        // Using a unique tag to prevent grouping and ensure delivery
+        tag: `prayer-diary-${pushData.contentType || 'notification'}-${Date.now()}`,
         renotify: true,
-        // Add actions for Android
-        actions: [
+        actions: pushData.actions || [
           {
             action: 'view',
             title: 'View'
@@ -205,11 +209,15 @@ self.addEventListener('push', (event) => {
             title: 'Dismiss'
           }
         ],
-        // Android specific settings to improve visibility
+        // Critical for Android heads-up notifications
+        importance: 'high',
         priority: 'high',
-        timestamp: Date.now(),
-        silent: false
+        silent: false,
+        // Set sound explicitly (Android sometimes needs this)
+        sound: 'default'
       };
+      
+      console.log('[Service Worker] Showing notification with options:', notificationOptions);
       
       // Wait until the notification is shown
       event.waitUntil(
@@ -252,6 +260,22 @@ self.addEventListener('push', (event) => {
   }
 });
 
+// Helper function to get view ID from content type
+function getViewIdFromContentType(contentType) {
+  if (!contentType) return 'calendar-view'; // Default view
+  
+  switch(contentType.toLowerCase()) {
+    case 'prayer_update':
+    case 'update':
+      return 'updates-view';
+    case 'urgent_prayer':
+    case 'urgent':
+      return 'urgent-view';
+    default:
+      return 'calendar-view';
+  }
+}
+
 // Handle notification click and route to correct view
 self.addEventListener('notificationclick', (event) => {
   console.log('[Service Worker] Notification click received:', event);
@@ -271,49 +295,32 @@ self.addEventListener('notificationclick', (event) => {
     return;
   }
   
-  // Determine the target URL based on notification data
-  let targetRoute = '/';
-  let targetViewId = 'calendar-view'; // Default view
+  // Get the viewId directly from notification data if available
+  let targetViewId = notificationData.viewId || 'calendar-view';
   
-  // Check for contentType in notification data
-  if (notificationData.contentType) {
-    // Map content types to view IDs
-    if (notificationData.contentType === 'prayer_update' || notificationData.contentType === 'update') {
-      targetViewId = 'updates-view';
-      targetRoute = '/updates-view';
-    } else if (notificationData.contentType === 'urgent_prayer' || notificationData.contentType === 'urgent') {
-      targetViewId = 'urgent-view';
-      targetRoute = '/urgent-view';
-    }
+  // Determine the target URL based on the target view
+  let targetRoute = '/';
+  
+  // Map view IDs to routes
+  switch(targetViewId) {
+    case 'updates-view':
+      targetRoute = '/';
+      break;
+    case 'urgent-view':
+      targetRoute = '/';
+      break;
+    default:
+      targetRoute = '/';
   }
   
   // Override with custom URL if provided
   if (notificationData.url) {
     targetRoute = notificationData.url;
-    
-    // Extract view ID from URL if possible
-    if (targetRoute.includes('-view')) {
-      const match = targetRoute.match(/[a-z]+-view/);
-      if (match && match[0]) {
-        targetViewId = match[0];
-      }
-    }
   }
   
   // Resolve the target URL to absolute URL
   const baseUrl = self.location.origin;
-  
-  // Handle fragment identifiers for SPA routing
-  let fullUrl;
-  if (targetRoute.startsWith('#')) {
-    fullUrl = baseUrl + '/' + targetRoute;
-  } else if (targetRoute.startsWith('/#')) {
-    fullUrl = baseUrl + targetRoute;
-  } else if (targetRoute.startsWith('/')) {
-    fullUrl = baseUrl + targetRoute;
-  } else {
-    fullUrl = new URL(targetRoute, baseUrl).href;
-  }
+  const fullUrl = new URL(targetRoute, baseUrl).href;
   
   console.log('[Service Worker] Navigation target:', fullUrl, 'View ID:', targetViewId);
   
@@ -322,42 +329,53 @@ self.addEventListener('notificationclick', (event) => {
     clients.matchAll({
       type: 'window',
       includeUncontrolled: true
-    }).then((windowClients) => {
+    })
+    .then((windowClients) => {
       // Check if there's already a window/tab open with our origin
-      const matchingClient = windowClients.find((client) => {
-        return client.url.startsWith(baseUrl);
-      });
-      
-      // If found, focus it and navigate
-      if (matchingClient) {
-        console.log('[Service Worker] Using existing window');
-        
-        return matchingClient.focus().then((focusedClient) => {
-          // Post a message to the client to navigate to the target view
-          focusedClient.postMessage({
-            type: 'NAVIGATE_TO_VIEW',
-            viewId: targetViewId,
-            data: notificationData
+      for (const client of windowClients) {
+        if (client.url.startsWith(baseUrl) && 'focus' in client) {
+          // Found a matching client, focus it and navigate
+          return client.focus().then((focusedClient) => {
+            console.log('[Service Worker] Focused existing client');
+            
+            // Post a message to navigate to the target view
+            focusedClient.postMessage({
+              type: 'NAVIGATE_TO_VIEW',
+              viewId: targetViewId,
+              data: notificationData
+            });
+            
+            return focusedClient;
           });
-          
-          return focusedClient;
-        });
+        }
       }
       
-      // Otherwise, open a new window/tab
+      // If no existing window is found, open a new one
       console.log('[Service Worker] Opening new window');
-      return clients.openWindow(fullUrl).then(windowClient => {
-        // If we got a windowClient back, send navigation message after a delay
-        if (windowClient) {
-          // Wait a bit for the client to initialize before sending the message
-          setTimeout(() => {
+      
+      // Using the root URL ensures the app loads properly before navigation
+      return clients.openWindow(baseUrl).then(windowClient => {
+        if (!windowClient) {
+          console.error('[Service Worker] Failed to open window');
+          return null;
+        }
+        
+        console.log('[Service Worker] New window opened, will navigate after initialization');
+        
+        // Wait for a substantial delay to allow the app to initialize fully
+        // This is critical for proper navigation in PWAs
+        setTimeout(() => {
+          // Post the navigation message with a longer delay for Android
+          if (windowClient.postMessage) {
             windowClient.postMessage({
               type: 'NAVIGATE_TO_VIEW',
               viewId: targetViewId,
               data: notificationData
             });
-          }, 1500); // Delay to allow client initialization
-        }
+            console.log('[Service Worker] Navigation message sent to new window');
+          }
+        }, 3000); // Increased delay for Android (3 seconds)
+        
         return windowClient;
       });
     })
@@ -389,6 +407,25 @@ self.addEventListener('message', (event) => {
       });
     } else {
       console.log(`[Service Worker] Versions match: ${clientVersion}`);
+    }
+  }
+  
+  // Handle client ready notification
+  if (event.data && event.data.type === 'CLIENT_READY') {
+    console.log('[Service Worker] Client reported ready for navigation');
+    
+    // If the client sends navigation data along with ready signal
+    if (event.data.pendingNavigation) {
+      const { viewId, data } = event.data.pendingNavigation;
+      
+      // Send navigation command back to the ready client
+      event.source.postMessage({
+        type: 'NAVIGATE_TO_VIEW',
+        viewId,
+        data
+      });
+      
+      console.log('[Service Worker] Sent pending navigation to ready client:', viewId);
     }
   }
 });

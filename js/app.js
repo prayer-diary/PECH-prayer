@@ -287,9 +287,6 @@ function initializeApp() {
     });
 }
 
-// Add this code to your app.js file, 
-// somewhere near the end of the initializeApp function or the end of the file
-
 // Listen for navigation messages from the service worker
 navigator.serviceWorker.addEventListener('message', function(event) {
   // Check if the message is a navigation request
@@ -304,7 +301,7 @@ navigator.serviceWorker.addEventListener('message', function(event) {
       console.log(`Navigating to ${viewId} from notification click`);
       
       // Ensure the app is fully initialized before navigating
-      setTimeout(() => {
+      const performNavigation = function() {
         // If the app views aren't visible yet, make them visible
         const appViews = document.getElementById('app-views');
         const landingView = document.getElementById('landing-view');
@@ -349,11 +346,126 @@ navigator.serviceWorker.addEventListener('message', function(event) {
         if (typeof showToast === 'function') {
           showToast('Notification', 'Navigated to ' + viewId.replace('-view', '') + ' view', 'info', 3000);
         }
-      }, 300);
+      };
+      
+      // Check if the app is ready for navigation
+      if (isAppReady()) {
+        // App is ready, perform navigation immediately
+        performNavigation();
+      } else {
+        // App isn't ready yet, set up a timer to check readiness
+        console.log('App not ready for navigation, will retry...');
+        
+        // Store the navigation request for later
+        window.pendingNotificationNavigation = {
+          viewId: viewId,
+          data: notificationData
+        };
+        
+        // Set up a retry mechanism
+        let retryCount = 0;
+        const maxRetries = 10;
+        const retryInterval = 500; // 500ms between retries
+        
+        const navigationRetryTimer = setInterval(() => {
+          retryCount++;
+          console.log(`Navigation retry attempt ${retryCount}/${maxRetries}`);
+          
+          if (isAppReady()) {
+            // App is ready, perform navigation
+            clearInterval(navigationRetryTimer);
+            performNavigation();
+            window.pendingNotificationNavigation = null;
+          }
+          else if (retryCount >= maxRetries) {
+            // Give up after max retries
+            clearInterval(navigationRetryTimer);
+            console.error('Failed to navigate after multiple attempts - app not ready');
+            
+            // Show an error toast if available
+            if (typeof showToast === 'function') {
+              showToast('Navigation Error', 'Could not navigate to the requested view', 'error', 5000);
+            }
+            
+            // Force a view change to default view as fallback
+            console.log('Forcing default view as fallback');
+            try {
+              showView('calendar-view');
+              if (typeof loadPrayerCalendar === 'function') {
+                loadPrayerCalendar();
+              }
+            } catch (e) {
+              console.error('Error showing fallback view:', e);
+            }
+          }
+        }, retryInterval);
+      }
     } else {
       console.warn('Invalid view ID received from service worker:', viewId);
     }
   }
+  
+  // Handle update check response
+  if (event.data && event.data.type === 'UPDATE_AVAILABLE') {
+    console.log('Update available notification received from Service Worker');
+    const newVersion = event.data.currentVersion;
+    
+    // Only show notification if not already shown AND 
+    // if this version hasn't been acknowledged before
+    if (!updateNotificationShown && newVersion !== lastAcknowledgedVersion) {
+      showUpdateNotification(newVersion);
+      updateNotificationShown = true;
+    }
+  }
+});
+
+// Check if the app is ready for navigation
+function isAppReady() {
+  // Check various conditions that indicate app readiness
+  const appViews = document.getElementById('app-views');
+  const isLoggedInFunc = window.isLoggedIn || function() { return false; };
+  
+  // App is ready if:
+  // 1. App views container exists
+  // 2. User is logged in (if we have the function)
+  // 3. Key UI components are initialized
+  const ready = 
+    appViews !== null && 
+    isLoggedInFunc() && 
+    typeof showView === 'function';
+    
+  console.log('App ready check:', ready);
+  return ready;
+}
+
+// Notify service worker that the client is ready
+function notifyServiceWorkerReady() {
+  if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+    // Send ready message
+    navigator.serviceWorker.controller.postMessage({
+      type: 'CLIENT_READY',
+      pendingNavigation: window.pendingNotificationNavigation
+    });
+    console.log('Notified service worker that client is ready');
+  }
+}
+
+// Add this to your page initialization code
+document.addEventListener('login-state-changed', function(event) {
+  if (event.detail && event.detail.loggedIn) {
+    // Wait a moment for UI to initialize after login, then notify service worker
+    setTimeout(notifyServiceWorkerReady, 1000);
+  }
+});
+
+// Ensure we notify service worker on page load if already logged in
+document.addEventListener('DOMContentLoaded', function() {
+  // Use a timer to give the app time to initialize
+  setTimeout(() => {
+    if (window.isLoggedIn && window.isLoggedIn()) {
+      notifyServiceWorkerReady();
+    }
+  }, 1500);
 });
 
 // Splash Screen functionality
@@ -573,91 +685,79 @@ function registerServiceWorkerWithPushSupport() {
         window.pendingServiceWorkerResolve(navigator.serviceWorker.controller);
           window.pendingServiceWorkerResolve = null;
         }
-    }
-    
-    if (event.data && event.data.type === 'UPDATE_AVAILABLE') {
-      console.log('Update available notification received from Service Worker');
-      const newVersion = event.data.currentVersion;
-      
-      // Only show notification if not already shown AND 
-    // if this version hasn't been acknowledged before
-  if (!updateNotificationShown && newVersion !== lastAcknowledgedVersion) {
-    showUpdateNotification(newVersion);
-    updateNotificationShown = true;
-  }
-    }
-});
+      }
+    });
 
-// Register the service worker with the correct path
-const swPath = window.location.pathname.includes('/PECH-prayer') ? '/PECH-prayer/service-worker.js' : '/service-worker.js';
-const swScope = window.location.pathname.includes('/PECH-prayer') ? '/PECH-prayer/' : '/';
+    // Register the service worker with the correct path
+    const swPath = window.location.pathname.includes('/PECH-prayer') ? '/PECH-prayer/service-worker.js' : '/service-worker.js';
+    const swScope = window.location.pathname.includes('/PECH-prayer') ? '/PECH-prayer/' : '/';
 
-console.log('[Client] Registering service worker at:', swPath, 'with scope:', swScope);
+    console.log('[Client] Registering service worker at:', swPath, 'with scope:', swScope);
 
-navigator.serviceWorker.register(swPath, {
-scope: swScope
-})
-.then(registration => {
-console.log('[Client] Service Worker registered with scope:', registration.scope);
+    navigator.serviceWorker.register(swPath, {
+    scope: swScope
+    })
+    .then(registration => {
+    console.log('[Client] Service Worker registered with scope:', registration.scope);
 
-// Store the registration globally for future use with push notifications
-window.swRegistration = registration;
+    // Store the registration globally for future use with push notifications
+    window.swRegistration = registration;
 
-// Check the current state of the service worker
-if (registration.active) {
-console.log('[Client] Service worker is already active');
-resolve(registration);
-return;
-}
-
-if (registration.installing) {
-console.log('[Client] Service worker is installing');
-  registration.installing.addEventListener('statechange', event => {
-  console.log('[Client] Service worker state changed to:', event.target.state);
-  if (event.target.state === 'activated') {
-      console.log('[Client] Service worker activated via statechange event');
+    // Check the current state of the service worker
+    if (registration.active) {
+    console.log('[Client] Service worker is already active');
     resolve(registration);
-  }
-  });
-} else if (registration.waiting) {
-  console.log('[Client] Service worker is waiting, forcing activation');
-  // Create a promise that will be resolved when we receive the activation message
-const activationPromise = new Promise(activationResolve => {
-window.pendingServiceWorkerResolve = activationResolve;
-});
+    return;
+    }
 
-// Send skipWaiting message
-registration.waiting.postMessage({action: 'skipWaiting'});
-  
-    // Listen for controller change indicating activation
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-    console.log('[Client] Service worker controller changed');
-  });
-    
-      // Wait for activation or timeout
-        Promise.race([
-          activationPromise,
-          new Promise(timeoutResolve => setTimeout(timeoutResolve, 5000))
-        ]).then(() => {
-          resolve(registration);
-        });
-      } else {
-        console.warn('[Client] No installing or waiting service worker found');
-        // Just resolve with what we have
+    if (registration.installing) {
+    console.log('[Client] Service worker is installing');
+      registration.installing.addEventListener('statechange', event => {
+      console.log('[Client] Service worker state changed to:', event.target.state);
+      if (event.target.state === 'activated') {
+          console.log('[Client] Service worker activated via statechange event');
         resolve(registration);
       }
-      
-      // Set a fallback timeout
-      setTimeout(() => {
-        console.warn('[Client] Service worker activation timeout - resolving anyway');
-        resolve(registration);
-      }, 6000);
-    })
-    .catch(error => {
-      console.error('[Client] Service Worker registration failed:', error);
-      reject(error);
+      });
+    } else if (registration.waiting) {
+      console.log('[Client] Service worker is waiting, forcing activation');
+      // Create a promise that will be resolved when we receive the activation message
+    const activationPromise = new Promise(activationResolve => {
+    window.pendingServiceWorkerResolve = activationResolve;
     });
-  });
+
+    // Send skipWaiting message
+    registration.waiting.postMessage({action: 'skipWaiting'});
+      
+        // Listen for controller change indicating activation
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+        console.log('[Client] Service worker controller changed');
+      });
+        
+          // Wait for activation or timeout
+            Promise.race([
+              activationPromise,
+              new Promise(timeoutResolve => setTimeout(timeoutResolve, 5000))
+            ]).then(() => {
+              resolve(registration);
+            });
+          } else {
+            console.warn('[Client] No installing or waiting service worker found');
+            // Just resolve with what we have
+            resolve(registration);
+          }
+          
+          // Set a fallback timeout
+          setTimeout(() => {
+            console.warn('[Client] Service worker activation timeout - resolving anyway');
+            resolve(registration);
+          }, 6000);
+        })
+        .catch(error => {
+          console.error('[Client] Service Worker registration failed:', error);
+          reject(error);
+        });
+      });
 }
 
 // Check for app updates
@@ -698,7 +798,7 @@ function showUpdateNotification(newVersion) {
     let toastContainer = document.querySelector('.toast-container.position-fixed.top-0.end-0.p-3');
     if (!toastContainer) {
         toastContainer = document.createElement('div');
-        toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+        toastContainer.className = 'toast-container position-fixed top-0.end-0.p-3';
         document.body.appendChild(toastContainer);
     }
     

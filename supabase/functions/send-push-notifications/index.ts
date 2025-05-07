@@ -16,6 +16,14 @@ const vapidSubject = Deno.env.get('VAPID_SUBJECT') || 'mailto:webmaster@pech.co.
 // Configure web push with VAPID credentials
 webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
 
+// CORS headers for the response - add your production domain here
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*', // In production, set to 'https://prayer.pech.co.uk'
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Max-Age': '86400',
+};
+
 // Logging utility for debugging
 const logDebug = (message: string, data?: any) => {
   console.log(`[PUSH-DEBUG] ${message}`, data ? JSON.stringify(data) : '');
@@ -23,6 +31,25 @@ const logDebug = (message: string, data?: any) => {
 
 // Handle HTTP requests to the function
 serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204, // No content
+      headers: corsHeaders,
+    });
+  }
+  
+  // Only allow POST requests for actual function
+  if (req.method !== 'POST') {
+    return new Response(
+      JSON.stringify({ error: 'Method not allowed' }),
+      { 
+        status: 405, 
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      }
+    );
+  }
+
   try {
     // Parse the request body
     const { userIds, title, message, contentType, contentId, data, ...otherOptions } = await req.json();
@@ -31,7 +58,7 @@ serve(async (req) => {
     if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
       return new Response(
         JSON.stringify({ error: 'Missing or invalid userIds parameter' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
     
@@ -51,7 +78,7 @@ serve(async (req) => {
       logDebug('Error fetching subscriptions', error);
       return new Response(
         JSON.stringify({ error: `Database error: ${error.message}` }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
+        { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
     
@@ -59,7 +86,7 @@ serve(async (req) => {
       logDebug('No active subscriptions found for users');
       return new Response(
         JSON.stringify({ message: 'No active subscriptions found for the specified users' }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
+        { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
     
@@ -92,8 +119,8 @@ serve(async (req) => {
           const basePayload = {
             title: title || 'Prayer Diary',
             body: message || 'New prayer notification',
-            icon: '/img/icons/ios/192.png',
-            badge: '/img/icons/ios/72.png',
+            icon: 'https://prayer.pech.co.uk/img/icons/ios/192.png',
+            badge: 'https://prayer.pech.co.uk/img/icons/ios/72.png',
             data: {
               contentType: contentType || 'default',
               contentId: contentId || null,
@@ -214,7 +241,7 @@ serve(async (req) => {
         failed: failed,
         results
       }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
+      { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
     );
   } catch (error) {
     // Handle unexpected errors
@@ -222,7 +249,7 @@ serve(async (req) => {
     
     return new Response(
       JSON.stringify({ error: `Error: ${error.message}` }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
     );
   }
 });
