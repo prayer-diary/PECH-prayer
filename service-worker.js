@@ -1,7 +1,7 @@
 // Service Worker for PECH Prayer Diary PWA
 
 // Cache version - update this number to force refresh of caches
-const CACHE_VERSION = '1.1.020';
+const CACHE_VERSION = '1.1.021';
 const CACHE_NAME = `prayer-diary-cache-${CACHE_VERSION}`;
 
 // App shell files to cache initially
@@ -25,7 +25,8 @@ const APP_SHELL_FILES = [
   '/img/placeholder-profile.png',
   '/img/icons/ios/192.png',
   '/img/icons/ios/512.png',
-  '/img/icons/ios/180.png'
+  '/img/icons/ios/180.png',
+  '/img/icons/ios/72.png'  // Added for badge icon
 ];
 
 // URLs to cache on install (in addition to APP_SHELL_FILES)
@@ -173,22 +174,41 @@ self.addEventListener('push', (event) => {
       // Set notification options based on the push data
       const notificationTitle = pushData.title || 'Prayer Diary';
       
+      // Set appropriate notification icons
+      const isAndroid = /android/i.test(self.navigator.userAgent);
+      
+      // Enhanced notification options for Android
       const notificationOptions = {
         body: pushData.body || 'New prayer notification',
-        icon: pushData.icon || '/img/icons/ios/192.png', 
-        badge: pushData.badge || '/img/icons/ios/72.png',
+        icon: pushData.icon || '/img/icons/ios/192.png',  // Main icon
+        badge: pushData.badge || '/img/icons/ios/72.png', // Badge icon (shown in notification tray)
         image: pushData.image || null,
         vibrate: pushData.vibrate || [100, 50, 100],
-        data: pushData.data || {},
-        requireInteraction: pushData.requireInteraction || true,
-        actions: pushData.actions || [
+        data: {
+          ...pushData.data || {},
+          timestamp: Date.now(),
+          contentType: pushData.contentType || 'default',
+          contentId: pushData.contentId || null
+        },
+        // These settings help ensure notifications are visible on Android
+        requireInteraction: true,
+        tag: pushData.tag || `prayer-diary-${Date.now()}`, // Unique tag to prevent grouping
+        renotify: true,
+        // Add actions for Android
+        actions: [
           {
             action: 'view',
             title: 'View'
+          },
+          {
+            action: 'dismiss',
+            title: 'Dismiss'
           }
         ],
-        tag: pushData.tag || 'prayer-diary-notification',
-        renotify: pushData.renotify || true
+        // Android specific settings to improve visibility
+        priority: 'high',
+        timestamp: Date.now(),
+        silent: false
       };
       
       // Wait until the notification is shown
@@ -199,6 +219,17 @@ self.addEventListener('push', (event) => {
             
             // After showing the notification, you might want to update some state or database
             // through a fetch request to your API if needed
+            return self.clients.matchAll().then(clients => {
+              if (clients.length > 0) {
+                // If there are active clients, inform them about the notification
+                clients.forEach(client => {
+                  client.postMessage({
+                    type: 'NOTIFICATION_RECEIVED',
+                    data: pushData
+                  });
+                });
+              }
+            });
           })
           .catch(error => {
             console.error('[Service Worker] Error showing notification:', error);
@@ -211,7 +242,8 @@ self.addEventListener('push', (event) => {
       event.waitUntil(
         self.registration.showNotification('Prayer Diary', {
           body: 'New notification from Prayer Diary',
-          icon: '/img/icons/ios/192.png'
+          icon: '/img/icons/ios/192.png',
+          badge: '/img/icons/ios/72.png'
         })
       );
     }
@@ -219,8 +251,6 @@ self.addEventListener('push', (event) => {
     console.log('[Service Worker] Push event had no data');
   }
 });
-
-// Add this code to service-worker.js just after the existing event listeners
 
 // Handle notification click and route to correct view
 self.addEventListener('notificationclick', (event) => {
@@ -232,6 +262,14 @@ self.addEventListener('notificationclick', (event) => {
   // Get the notification data
   const notificationData = event.notification.data || {};
   console.log('[Service Worker] Notification data:', notificationData);
+  
+  // Track which action was clicked (if any)
+  const actionClicked = event.action || 'default';
+  
+  // If dismiss action was clicked, just close the notification
+  if (actionClicked === 'dismiss') {
+    return;
+  }
   
   // Determine the target URL based on notification data
   let targetRoute = '/';

@@ -6,6 +6,7 @@ window.PUSH_NOTIFICATION = window.PUSH_NOTIFICATION || {};
 window.PUSH_NOTIFICATION.PERMISSION_PROMPT_KEY = 'pushNotificationPermissionPromptShown';
 window.PUSH_NOTIFICATION.PERMISSION_PROMPT_DELAY = 3000; // 3 seconds
 window.PUSH_NOTIFICATION.IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+window.PUSH_NOTIFICATION.IS_ANDROID = /Android/.test(navigator.userAgent);
 
 // Variable to track if initialization has been done
 let pushInitialized = false;
@@ -72,23 +73,81 @@ window.isInStandaloneMode = function isInStandaloneMode() {
   return displayModeStandalone || navigatorStandalone || androidApp || installedFlag;
 }
 
-// Advanced iOS debug logging
-function logIOSDebugInfo() {
-  if (!window.PUSH_NOTIFICATION.IS_IOS) return;
+// Advanced device debug logging
+function logDeviceDebugInfo() {
+  // Create a comprehensive device and environment report
+  const debugInfo = {
+    device: {
+      userAgent: navigator.userAgent,
+      platform: navigator.platform,
+      isIOS: window.PUSH_NOTIFICATION.IS_IOS,
+      isAndroid: window.PUSH_NOTIFICATION.IS_ANDROID,
+      standalone: window.navigator.standalone,
+      displayModeStandalone: window.matchMedia('(display-mode: standalone)').matches,
+      installedFlag: localStorage.getItem('prayerDiaryInstalled') === 'true',
+      language: navigator.language
+    },
+    features: {
+      serviceWorkerSupported: 'serviceWorker' in navigator,
+      pushManagerSupported: 'PushManager' in window,
+      notificationSupported: 'Notification' in window,
+      notificationPermission: Notification.permission
+    },
+    app: {
+      version: window.PRAYER_DIARY ? window.PRAYER_DIARY.version : 'unknown',
+      devMode: window.PRAYER_DIARY ? window.PRAYER_DIARY.devMode : false
+    }
+  };
   
-  const iosVersion = getIOSVersion();
-  console.log('iOS Push Notification Debug Info:', {
-    version: iosVersion ? `${iosVersion.major}.${iosVersion.minor}.${iosVersion.patch}` : 'Unknown',
-    standalone: window.navigator.standalone,
-    displayModeStandalone: window.matchMedia('(display-mode: standalone)').matches,
-    serviceWorkerSupported: 'serviceWorker' in navigator,
-    pushManagerSupported: 'PushManager' in window,
-    notificationSupported: 'Notification' in window,
-    notificationPermission: Notification.permission,
-    isVersionSupported: isIOSVersionSupported(),
-    isStandalone: isIOSStandalone(),
-    userAgent: navigator.userAgent
-  });
+  // Add iOS-specific information if on iOS
+  if (window.PUSH_NOTIFICATION.IS_IOS) {
+    const iosVersion = getIOSVersion();
+    debugInfo.ios = {
+      version: iosVersion ? `${iosVersion.major}.${iosVersion.minor}.${iosVersion.patch}` : 'Unknown',
+      isVersionSupported: isIOSVersionSupported(),
+      isStandalone: isIOSStandalone()
+    };
+  }
+  
+  // Add Android-specific information if on Android
+  if (window.PUSH_NOTIFICATION.IS_ANDROID) {
+    // Extract Android version
+    const match = navigator.userAgent.match(/Android (\d+)\.(\d+)\.?(\d+)?/);
+    debugInfo.android = {
+      version: match ? `${match[1]}.${match[2]}.${match[3] || 0}` : 'Unknown',
+      manufacturer: getAndroidManufacturer()
+    };
+  }
+  
+  console.log('Device Debug Information:', debugInfo);
+  return debugInfo;
+}
+
+// Get Android manufacturer from user agent
+function getAndroidManufacturer() {
+  const ua = navigator.userAgent;
+  
+  // Common Android manufacturers and their identifiers in UA
+  const manufacturers = [
+    { name: 'Samsung', pattern: /samsung/i },
+    { name: 'Google', pattern: /pixel|google/i },
+    { name: 'Huawei', pattern: /huawei/i },
+    { name: 'Xiaomi', pattern: /xiaomi|redmi/i },
+    { name: 'Oppo', pattern: /oppo/i },
+    { name: 'Vivo', pattern: /vivo/i },
+    { name: 'OnePlus', pattern: /oneplus/i },
+    { name: 'Motorola', pattern: /moto/i },
+    { name: 'LG', pattern: /lg/i },
+    { name: 'Sony', pattern: /sony|xperia/i }
+  ];
+  
+  for (const manufacturer of manufacturers) {
+    if (manufacturer.pattern.test(ua)) {
+      return manufacturer.name;
+    }
+  }
+  
+  return 'Unknown';
 }
 
 // Set up listeners for the notification permission UI
@@ -102,6 +161,17 @@ function setupPushNotificationListeners() {
       requestNotificationPermission();
     }
   });
+  
+  // Listen for service worker messages
+  if (navigator.serviceWorker) {
+    navigator.serviceWorker.addEventListener('message', function(event) {
+      // Handle notification related messages
+      if (event.data && event.data.type === 'NOTIFICATION_RECEIVED') {
+        console.log('Received notification message from service worker:', event.data);
+        // Could add specific notification handling here
+      }
+    });
+  }
 }
 
 // Initialize push notifications at app startup
@@ -115,8 +185,8 @@ async function initializePushNotifications() {
   try {
     console.log('Initializing push notifications');
     
-    // Log debug info for iOS devices
-    logIOSDebugInfo();
+    // Log comprehensive debug info
+    logDeviceDebugInfo();
     
     // Check for iOS version support
     if (window.PUSH_NOTIFICATION.IS_IOS) {
@@ -165,7 +235,10 @@ async function initializePushNotifications() {
       
       // Only proceed if permission is granted
       if (permission === 'granted') {
- 
+        // For Android, make sure the service worker is properly registered and active
+        if (window.PUSH_NOTIFICATION.IS_ANDROID) {
+          await ensureServiceWorkerRegistered();
+        }
         
         // Now get the service worker registration
         const registration = window.swRegistration || await navigator.serviceWorker.ready;
@@ -198,9 +271,6 @@ async function initializePushNotifications() {
             if (window.PUSH_NOTIFICATION.IS_IOS) {
               // When debugging, explicitly request the prompt
               subscriptionOptions.prompt = true;
-              
-              // Include webPushId if registered with Apple
-              // subscriptionOptions.webPushId = 'web.com.yourcompany.yourapp';
             }
             
             subscription = await registration.pushManager.subscribe(subscriptionOptions);
@@ -243,6 +313,85 @@ async function initializePushNotifications() {
     }
   } catch (error) {
     console.error('Error initializing push notifications:', error);
+  }
+}
+
+// Ensure the service worker is registered correctly (especially for Android)
+async function ensureServiceWorkerRegistered() {
+  try {
+    // Skip if service worker is not supported
+    if (!('serviceWorker' in navigator)) {
+      console.error('Service Worker not supported in this browser');
+      return null;
+    }
+    
+    // Check if we already have a registration stored
+    if (window.swRegistration && window.swRegistration.active) {
+      console.log('Using existing service worker registration');
+      return window.swRegistration;
+    }
+    
+    // Determine the service worker path
+    const swPath = window.location.pathname.includes('/PECH-prayer') 
+      ? '/PECH-prayer/service-worker.js'
+      : '/service-worker.js';
+      
+    const swScope = window.location.pathname.includes('/PECH-prayer')
+      ? '/PECH-prayer/'
+      : '/';
+    
+    console.log('Registering service worker with path:', swPath, 'and scope:', swScope);
+    
+    // Add cache-busting query parameter for Android
+    // This helps ensure we always get the latest version
+    const cacheBustingPath = `${swPath}?v=${Date.now()}`;
+    
+    // Register the service worker
+    const registration = await navigator.serviceWorker.register(cacheBustingPath, {
+      scope: swScope
+    });
+    
+    console.log('Service worker registered successfully');
+    
+    // If the service worker is installing or waiting, try to activate it
+    if (registration.installing || registration.waiting) {
+      console.log('Service worker is installing or waiting, attempting to activate');
+      
+      if (registration.waiting) {
+        // Send skipWaiting message to the waiting service worker
+        registration.waiting.postMessage({ action: 'skipWaiting' });
+      }
+      
+      // Wait for the service worker to activate
+      await new Promise((resolve) => {
+        const listener = (event) => {
+          if (event.target.state === 'activated') {
+            registration.removeEventListener('statechange', listener);
+            resolve();
+          }
+        };
+        
+        if (registration.installing) {
+          registration.installing.addEventListener('statechange', listener);
+        } else if (registration.waiting) {
+          registration.waiting.addEventListener('statechange', listener);
+        } else {
+          resolve(); // Already activated
+        }
+      });
+      
+      // Wait for controller change event which indicates the service worker has taken control
+      await navigator.serviceWorker.ready;
+    }
+    
+    // Store the registration globally
+    window.swRegistration = registration;
+    
+    console.log('Service worker registered and activated');
+    return registration;
+  } catch (error) {
+    console.error('Error ensuring service worker registration:', error);
+    return null;
   }
 }
 
@@ -426,8 +575,34 @@ function showIOSInstallInstructions() {
   showNotification('Installation Required', content);
 }
 
+// Show Android-specific notification help
+function showAndroidNotificationHelp() {
+  const content = `
+    <p>Notification permissions are currently blocked for this app on your Android device.</p>
+    <h6 class="mt-3 mb-2">To enable notifications:</h6>
+    <ol>
+      <li>Open your device <strong>Settings</strong></li>
+      <li>Tap on <strong>Apps</strong> or <strong>Application Manager</strong></li>
+      <li>Find this app or your browser in the list</li>
+      <li>Tap on <strong>Permissions</strong> or <strong>Notifications</strong></li>
+      <li>Enable notifications for this app</li>
+      <li>Return to the app and refresh</li>
+    </ol>
+    <p class="mt-2"><strong>Note:</strong> For the best experience, install this app to your home screen.</p>
+  `;
+  
+  showNotification('Android Notifications', content);
+}
+
 // Show help for re-enabling notifications (standard browsers)
 function showNotificationHelp() {
+  // Show platform-specific help when possible
+  if (window.PUSH_NOTIFICATION.IS_ANDROID) {
+    showAndroidNotificationHelp();
+    return;
+  }
+  
+  // Generic help for other browsers
   const content = `
     <p>You previously blocked notifications for this site. To receive prayer notifications, you'll need to change your browser settings.</p>
     <h6 class="mt-3 mb-2">How to enable notifications:</h6>
@@ -454,6 +629,10 @@ async function subscribeToPushNotifications() {
       return false;
     }
     
+    // For Android, ensure service worker is properly registered first
+    if (window.PUSH_NOTIFICATION.IS_ANDROID) {
+      await ensureServiceWorkerRegistered();
+    }
     
     // Get the service worker registration - use global registration if available
     const registration = window.swRegistration || await navigator.serviceWorker.ready;
@@ -499,9 +678,6 @@ async function subscribeToPushNotifications() {
         if (window.PUSH_NOTIFICATION.IS_IOS) {
           // When debugging, explicitly request the prompt
           subscriptionOptions.prompt = true;
-          
-          // Include webPushId if registered with Apple
-          // subscriptionOptions.webPushId = 'web.com.yourcompany.yourapp';
         }
         
         subscription = await registration.pushManager.subscribe(subscriptionOptions);
@@ -518,6 +694,16 @@ async function subscribeToPushNotifications() {
             const errorMessage = `iOS push registration error: ${subError.message}`;
             console.error(errorMessage);
             showNotification('Push Registration Failed', errorMessage, 'error');
+          }
+        } else if (window.PUSH_NOTIFICATION.IS_ANDROID) {
+          // Android-specific error handling
+          const errorMessage = `Android push registration error: ${subError.message}`;
+          console.error(errorMessage);
+          showNotification('Push Registration Failed', errorMessage, 'error');
+          
+          // Show Android help if permission denied
+          if (Notification.permission === 'denied') {
+            showAndroidNotificationHelp();
           }
         } else if (Notification.permission === 'denied') {
           console.log('Permission denied for notifications');
@@ -578,7 +764,9 @@ async function saveSubscriptionToDatabase(subscription) {
         .update({
           subscription_data: subscriptionJSON,
           active: true,  // Mark as active when updating
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          platform: window.PUSH_NOTIFICATION.IS_IOS ? 'ios' : 
+                   window.PUSH_NOTIFICATION.IS_ANDROID ? 'android' : 'other'
         })
         .eq('id', existingSubscription.id);
         
@@ -595,7 +783,9 @@ async function saveSubscriptionToDatabase(subscription) {
           subscription_data: subscriptionJSON,
           active: true,  // Set as active on creation
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          platform: window.PUSH_NOTIFICATION.IS_IOS ? 'ios' : 
+                   window.PUSH_NOTIFICATION.IS_ANDROID ? 'android' : 'other'
         });
         
       if (insertError) {
@@ -603,6 +793,9 @@ async function saveSubscriptionToDatabase(subscription) {
         return false;
       }
     }
+    
+    // Update user profile to reflect push notification preference
+    await updateProfileNotificationSettings('push');
     
     return true;
   } catch (error) {
@@ -688,34 +881,52 @@ async function updateProfileNotificationSettings(newMethod = 'none') {
   }
 }
 
-// Test push notifications (for debugging)
+// Enhanced test push notification with platform detection
 async function testPushNotification() {
   try {
     console.log('Sending test push notification...');
     
+    // Log detailed device debug information
+    const deviceInfo = logDeviceDebugInfo();
     
-    // If on iOS, log additional debug information
-    if (window.PUSH_NOTIFICATION.IS_IOS) {
-      logIOSDebugInfo();
+    // Prepare notification parameters with platform-specific optimizations
+    const notificationParams = {
+      userIds: [getUserId()],
+      title: 'Prayer Diary Test',
+      message: 'This is a test notification from Prayer Diary.',
+      contentType: 'test',
+      contentId: '00000000-0000-0000-0000-000000000000',
+      data: {
+        url: '/calendar-view',
+        timestamp: Date.now()
+      },
+      // Visual properties to ensure proper display
+      requireInteraction: true,
+      renotify: true,
+      vibrate: [100, 50, 100, 50, 100, 50, 100], 
+      tag: 'PECH-prayer-test-' + Date.now()
+    };
+    
+    // Add Android-specific parameters
+    if (window.PUSH_NOTIFICATION.IS_ANDROID) {
+      notificationParams.priority = 'high';
+      notificationParams.actions = [
+        {
+          action: 'view',
+          title: 'View'
+        },
+        {
+          action: 'dismiss',
+          title: 'Dismiss'
+        }
+      ];
+      // Android requires more descriptive messages
+      notificationParams.message = 'This is a test notification from Prayer Diary. Tap to open the app.';
     }
     
+    // The Edge Function will handle additional platform-specific formatting
     const { data, error } = await supabase.functions.invoke('send-push-notifications', {
-      body: {
-        userIds: [getUserId()],
-        title: 'Prayer Diary Test',
-        message: 'This is a test notification from Prayer Diary. It should appear as a popup notification.',
-        contentType: 'test',
-        contentId: '00000000-0000-0000-0000-000000000000',
-        data: {
-          url: '/calendar-view',
-          timestamp: Date.now()
-        },
-        // Visual properties to ensure proper display
-        requireInteraction: true,
-        renotify: true,
-        vibrate: [100, 50, 100, 50, 100, 50, 100],
-        tag: 'PECH-prayer-test-' + Date.now()
-      }
+      body: notificationParams
     });
     
     if (error) {
