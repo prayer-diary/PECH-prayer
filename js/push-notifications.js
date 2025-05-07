@@ -323,7 +323,7 @@ async function ensureServiceWorkerReady() {
       
       // Wait for activation
       if (registration.installing) {
-        console.log('[Push] Service worker is installing, waiting for activation');
+        console.log('[Push] **NOT EXPECTING THIS Service worker is installing, waiting for activation');
         
         // Combination of statechange and message events
         const activationPromise = new Promise(stateResolve => {
