@@ -143,10 +143,12 @@ serve(async (req) => {
               ...basePayload,
               // Set icon to the Android-specific notification icon
               icon: '/img/icons/android/notification_icon.png',  // Use the white silhouette icon
-              // Android requires these for optimal visibility
-              priority: 'high',
-              vibrate: [100, 50, 100, 50, 100, 50, 100],
+              // Android requires these for optimal visibility - updated to max priority
+              priority: 'max',
+              // Enhanced vibration pattern for stronger alerts
+              vibrate: [200, 100, 200, 100, 200, 100, 400],
               requireInteraction: true,
+              // Unique tag with timestamp for each notification
               tag: `prayer-diary-${contentType || 'notification'}-${Date.now()}`,
               renotify: true,
               actions: [
@@ -157,10 +159,14 @@ serve(async (req) => {
               body: message || `New ${contentType || 'prayer'} notification. Tap to view details.`,
               // Ensure timestamp is present for proper ordering
               timestamp: Date.now(),
-              // Set silent to false to ensure notification alert
+              // Set silent to false explicitly to ensure notification alert
               silent: false,
               // Add sound for better alerts
-              sound: 'default'
+              sound: 'default',
+              // Add explicit importance setting for heads-up display
+              importance: 'high',
+              // Set maximum visibility for lock screen
+              visibility: 'public'
             };
           } else if (platform === 'ios') {
             // iOS-specific enhancements

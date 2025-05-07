@@ -1,7 +1,7 @@
 // Service Worker for PECH Prayer Diary PWA
 
 // Cache version - update this number to force refresh of caches
-const CACHE_VERSION = '1.1.022';
+const CACHE_VERSION = '1.1.025';
 const CACHE_NAME = `prayer-diary-cache-${CACHE_VERSION}`;
 
 // App shell files to cache initially
@@ -185,7 +185,8 @@ self.addEventListener('push', (event) => {
         icon: isAndroid ? '/img/icons/android/notification_icon.png' : '/img/icons/ios/192.png',
         badge: pushData.badge || '/img/icons/ios/72.png',
         image: pushData.image || null,
-        vibrate: pushData.vibrate || [100, 50, 100, 50, 100, 50, 100],
+        // Enhanced vibration pattern for stronger alerts
+        vibrate: pushData.vibrate || [200, 100, 200, 100, 200, 100, 400],
         data: {
           ...pushData.data || {},
           timestamp: Date.now(),
@@ -196,7 +197,7 @@ self.addEventListener('push', (event) => {
         },
         // Android settings for heads-up notifications
         requireInteraction: true,
-        // Using a unique tag to prevent grouping and ensure delivery
+        // Using a unique tag with timestamp to prevent grouping and ensure delivery
         tag: `prayer-diary-${pushData.contentType || 'notification'}-${Date.now()}`,
         renotify: true,
         actions: pushData.actions || [
@@ -209,11 +210,11 @@ self.addEventListener('push', (event) => {
             title: 'Dismiss'
           }
         ],
-        // Critical for Android heads-up notifications
+        // Critical for Android heads-up notifications - changed to max priority
         importance: 'high',
-        priority: 'high',
+        priority: 'max',
         silent: false,
-        // Set sound explicitly (Android sometimes needs this)
+        // Set sound explicitly for Android
         sound: 'default'
       };
       
