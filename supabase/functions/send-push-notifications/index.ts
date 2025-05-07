@@ -1,267 +1,228 @@
-// Supabase Edge Function: send-push-notifications
-// Sends push notifications to users who have subscribed
+// Supabase Edge Function for sending push notifications
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import * as webpush from 'npm:web-push@3.6.1';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.29.0';
 
-import { serve } from 'https://deno.land/std@0.170.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+// Initialize Supabase client
+const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-import webpush from 'npm:web-push@3.5.0'
-// CORS headers for all responses
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-client-info, apikey',
-  'Access-Control-Max-Age': '86400'
+// Set up VAPID keys for Web Push
+const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY') || '';
+const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY') || '';
+const vapidSubject = Deno.env.get('VAPID_SUBJECT') || 'mailto:webmaster@pech.co.uk';
+
+// Configure web push with VAPID credentials
+webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
+
+// Logging utility for debugging
+const logDebug = (message: string, data?: any) => {
+  console.log(`[PUSH-DEBUG] ${message}`, data ? JSON.stringify(data) : '');
 };
 
-// Setup web-push with VAPID keys
-// IMPORTANT: In production, store these in secure environment variables
-const VAPID_PUBLIC_KEY = Deno.env.get('VAPID_PUBLIC_KEY') || 'YOUR_VAPID_PUBLIC_KEY_HERE';
-const VAPID_PRIVATE_KEY = Deno.env.get('VAPID_PRIVATE_KEY') || 'YOUR_VAPID_PRIVATE_KEY_HERE';
-const VAPID_SUBJECT = Deno.env.get('VAPID_SUBJECT') || 'mailto:your-email@example.com';
-
-webpush.setVapidDetails(
-  VAPID_SUBJECT,
-  VAPID_PUBLIC_KEY,
-  VAPID_PRIVATE_KEY
-);
-
+// Handle HTTP requests to the function
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
-
   try {
-    // Only allow POST requests
-    if (req.method !== 'POST') {
-      throw new Error('Method not allowed')
-    }
-
-    // Get request body
-    const { userIds, title, message, contentType, contentId, data } = await req.json()
-
-    // Verify required parameters
-    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
-      throw new Error('Missing or invalid userIds parameter')
-    }
-    if (!title || !message) {
-      throw new Error('Missing required parameters: title and message are required')
-    }
-
-    // Initialize Supabase client with admin privileges
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-      }
-    )
-
-    // Fetch active push subscriptions for the specified users
-    // Now we can directly filter by active=true since we know the column exists
-    const { data: subscriptions, error: fetchError } = await supabaseAdmin
-      .from('push_subscriptions')
-      .select('*')
-      .in('user_id', userIds)
-      .eq('active', true)
-
-    if (fetchError) {
-      throw new Error(`Error fetching subscriptions: ${fetchError.message}`)
-    }
-
-    console.log(`Found ${subscriptions?.length || 0} active push subscriptions for ${userIds.length} users`)
-
-    // If no subscriptions found, return early
-    if (!subscriptions || subscriptions.length === 0) {
-      return new Response(
-        JSON.stringify({
-          success: true,
-          message: 'No active push subscriptions found for the specified users',
-          sent: 0
-        }),
-        {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/json',
-            ...corsHeaders
-          }
-        }
-      )
-    }
-
-    // Get the base URL from environment variable or use the GitHub Pages URL as default
-    const BASE_URL = Deno.env.get('APP_URL') || 'https://prayer-diary.github.io/PECH-prayer';
-
-    // Parse provided navigation URL or create one using the contentType
-    let navigationUrl = data?.url || '/';
-
-    // Fix URL format for contentType-based navigation
-    // This ensures we use view IDs that match the app's internal structure
-    if (contentType && !navigationUrl.includes('-view')) {
-      // Map contentType to the appropriate view ID
-      if (contentType === 'urgent' || contentType === 'urgent_prayer') {
-        navigationUrl = 'urgent-view'; // Direct view ID for app navigation
-      } else if (contentType === 'update' || contentType === 'prayer_update') {
-        navigationUrl = 'updates-view'; // Direct view ID for app navigation
-      } else if (contentType === 'calendar') {
-        navigationUrl = 'calendar-view'; // Direct view ID for app navigation
-      } else {
-        // Default to a known view ID
-        navigationUrl = 'calendar-view';
-      }
-
-      // Add contentId as parameter if available
-      if (contentId) {
-        // Store contentId in the data object for internal navigation handling
-        if (!data) data = {};
-        data.contentId = contentId;
-      }
-    }
-
-    console.log(`Generated navigation target: ${navigationUrl}`);
-
-    // Prepare notification payload with absolute URLs for icons and correct data structure
-    const notificationPayload = JSON.stringify({
-      title: title,
-      body: message,
-      icon: `${BASE_URL}/img/icons/ios/192.png`, // Using generic iOS icon
-      badge: `${BASE_URL}/img/icons/ios/72.png`, // Using generic iOS icon
-      image: data?.image || null,  // Optional larger image to show in notification
-      data: {
-        dateOfArrival: Date.now(),
-        primaryKey: 1,
-        url: navigationUrl, // Use the properly formatted navigation target
-        contentType,
-        contentId,
-        ...data // Include any additional data
-      },
-      // Visual options to improve notification appearance
-      vibrate: [100, 50, 100],
-      requireInteraction: true,  // Keep notification visible until dismissed
-      actions: [
-        {
-          action: 'view',
-          title: 'View'
-        }
-      ]
-    })
-
-    // Send push notifications and track results
-    const results = []
-    let successCount = 0
-    let failureCount = 0
+    // Parse the request body
+    const { userIds, title, message, contentType, contentId, data, ...otherOptions } = await req.json();
     
-    for (const subscription of subscriptions) {
-      try {
-        // Skip if subscription data is missing or invalid
-        if (!subscription.subscription_data || !subscription.subscription_data.endpoint) {
-          console.log(`Skipping invalid subscription for user ${subscription.user_id}`)
-          continue
-        }
-
-        // Send the notification with the correct field name and TTL
-        await webpush.sendNotification(
-          subscription.subscription_data,
-          notificationPayload,
-          {
-            // Add TTL of 24 hours (in seconds) to ensure notifications don't expire too quickly
-            TTL: 86400
-          }
-        )
-
-        // Record successful delivery
-        successCount++
-        results.push({
-          user_id: subscription.user_id,
-          success: true
-        })
-
-        // Log the notification in the database
-        await supabaseAdmin
-          .from('notification_logs')
-          .insert({
-            user_id: subscription.user_id,
-            notification_type: 'push',
-            content_type: contentType,
-            content_id: contentId,
-            status: 'sent',
-            target_url: navigationUrl // Store the target URL for debugging purposes
-          })
-
-      } catch (error) {
-        // This could be due to an expired subscription
-        failureCount++
-        console.error(`Error sending notification to subscription ${subscription.id}:`, error)
-        
-        results.push({
-          user_id: subscription.user_id,
-          success: false,
-          error: error.message
-        })
-
-        // Handle specific webpush errors
-        if (error.statusCode === 404 || error.statusCode === 410) {
-          // Subscription has expired or is no longer valid
-          console.log(`Subscription ${subscription.id} is no longer valid, marking as inactive`)
-          
-          // Mark subscription as inactive
-          await supabaseAdmin
-            .from('push_subscriptions')
-            .update({ active: false })
-            .eq('id', subscription.id)
-        }
-
-        // Log the failure in the database
-        await supabaseAdmin
-          .from('notification_logs')
-          .insert({
-            user_id: subscription.user_id,
-            notification_type: 'push',
-            content_type: contentType,
-            content_id: contentId,
-            status: 'failed',
-            error_message: error.message,
-            target_url: navigationUrl // Store the target URL for debugging purposes
-          })
-      }
+    // Validate inputs
+    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+      return new Response(
+        JSON.stringify({ error: 'Missing or invalid userIds parameter' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
     }
+    
+    logDebug(`Notification request received for users: ${userIds.join(', ')}`, {
+      contentType,
+      title
+    });
 
-    // Return the results
+    // Get active subscriptions for the specified users
+    const { data: subscriptions, error } = await supabase
+      .from('push_subscriptions')
+      .select('id, user_id, subscription_data, platform, active')
+      .in('user_id', userIds)
+      .eq('active', true);
+    
+    if (error) {
+      logDebug('Error fetching subscriptions', error);
+      return new Response(
+        JSON.stringify({ error: `Database error: ${error.message}` }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    if (!subscriptions || subscriptions.length === 0) {
+      logDebug('No active subscriptions found for users');
+      return new Response(
+        JSON.stringify({ message: 'No active subscriptions found for the specified users' }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    logDebug(`Found ${subscriptions.length} subscriptions`);
+    
+    // Process each subscription and send notifications
+    const results = await Promise.all(
+      subscriptions.map(async (subscription) => {
+        try {
+          const subscriptionData = subscription.subscription_data;
+          const platform = subscription.platform || 'other';
+          
+          // Skip invalid subscription data
+          if (!subscriptionData || !subscriptionData.endpoint) {
+            return {
+              success: false,
+              userId: subscription.user_id,
+              error: 'Invalid subscription data',
+              platform
+            };
+          }
+          
+          // Log subscription info for debugging
+          logDebug(`Processing subscription for user ${subscription.user_id}`, {
+            platform,
+            endpoint: subscriptionData.endpoint.substring(0, 30) + '...'
+          });
+          
+          // Base notification payload (common for all platforms)
+          const basePayload = {
+            title: title || 'Prayer Diary',
+            body: message || 'New prayer notification',
+            icon: '/img/icons/ios/192.png',
+            badge: '/img/icons/ios/72.png',
+            data: {
+              contentType: contentType || 'default',
+              contentId: contentId || null,
+              timestamp: Date.now(),
+              ...data
+            },
+            ...otherOptions
+          };
+          
+          // Platform-specific notification payload enhancements
+          let platformPayload;
+          
+          if (platform === 'android') {
+            // Android-specific enhancements
+            platformPayload = {
+              ...basePayload,
+              // Android requires these for optimal visibility
+              priority: 'high',
+              vibrate: [100, 50, 100, 50, 100, 50, 100],
+              requireInteraction: true,
+              tag: `prayer-diary-${contentType || 'notification'}-${Date.now()}`,
+              renotify: true,
+              actions: [
+                { action: 'view', title: 'View' },
+                { action: 'dismiss', title: 'Dismiss' }
+              ],
+              // Android needs more detailed messages
+              body: message || `New ${contentType || 'prayer'} notification. Tap to view details.`,
+              // Ensure timestamp is present for proper ordering
+              timestamp: Date.now(),
+              // Set silent to false to ensure notification alert
+              silent: false
+            };
+          } else if (platform === 'ios') {
+            // iOS-specific enhancements
+            platformPayload = {
+              ...basePayload,
+              // iOS-specific settings
+              requireInteraction: true,
+              // iOS handles actions differently
+              actions: [
+                { action: 'view', title: 'View' }
+              ]
+            };
+          } else {
+            // Default payload for unknown platforms
+            platformPayload = basePayload;
+          }
+          
+          // Web Push specific options
+          const pushOptions = {
+            TTL: 60 * 60 * 24, // 24 hours (in seconds)
+            urgency: platform === 'android' ? 'high' : 'normal',
+            topic: contentType || 'prayer' // For grouping notifications
+          };
+          
+          // Send the notification
+          await webpush.sendNotification(
+            subscriptionData,
+            JSON.stringify(platformPayload),
+            pushOptions
+          );
+          
+          // Log success
+          logDebug(`Successfully sent notification to user ${subscription.user_id} on ${platform}`);
+          
+          return {
+            success: true,
+            userId: subscription.user_id,
+            platform
+          };
+        } catch (error) {
+          // Handle expired subscriptions
+          if (error.statusCode === 410) { // Gone - subscription has expired
+            logDebug(`Subscription expired for user ${subscription.user_id}, marking as inactive`);
+            
+            // Mark subscription as inactive
+            try {
+              await supabase
+                .from('push_subscriptions')
+                .update({ active: false })
+                .eq('id', subscription.id);
+            } catch (dbError) {
+              logDebug(`Failed to mark subscription as inactive: ${dbError.message}`);
+            }
+          }
+          
+          // Log the error
+          logDebug(`Error sending notification to user ${subscription.user_id}:`, {
+            error: error.message,
+            statusCode: error.statusCode,
+            platform: subscription.platform
+          });
+          
+          return {
+            success: false,
+            userId: subscription.user_id,
+            error: `${error.message} (${error.statusCode || 'unknown'})`,
+            platform: subscription.platform
+          };
+        }
+      })
+    );
+    
+    // Calculate success/failure statistics
+    const successful = results.filter(r => r.success).length;
+    const failed = results.filter(r => !r.success).length;
+    
+    // Log summary
+    logDebug(`Notification sending complete. Successful: ${successful}, Failed: ${failed}`);
+    
+    // Return results
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Push notifications sent to ${successCount} subscriptions (${failureCount} failures)`,
-        sent: successCount,
-        failed: failureCount,
+        total: results.length,
+        sent: successful,
+        failed: failed,
         results
       }),
-      {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          ...corsHeaders
-        }
-      }
-    )
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
   } catch (error) {
-    // Handle and return any errors
-    console.error('Error in send-push-notifications function:', error)
+    // Handle unexpected errors
+    logDebug(`Unexpected error: ${error.message}`);
     
     return new Response(
-      JSON.stringify({
-        success: false,
-        error: error.message
-      }),
-      {
-        status: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          ...corsHeaders
-        }
-      }
-    )
+      JSON.stringify({ error: `Error: ${error.message}` }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
   }
-})
+});
