@@ -1,7 +1,7 @@
 // Service Worker for PECH Prayer Diary PWA
 
 // Cache version - update this number to force refresh of caches
-const CACHE_VERSION = '1.1.037';
+const CACHE_VERSION = '1.1.040';
 const CACHE_NAME = `prayer-diary-cache-${CACHE_VERSION}`;
 
 // App shell files to cache initially
@@ -160,7 +160,7 @@ self.addEventListener('fetch', (event) => {
   }
 });
 
-// Push event handler - show notifications
+// Enhanced Push event handler
 self.addEventListener('push', (event) => {
   console.log('[Service Worker] Push received:', event);
   
@@ -178,6 +178,21 @@ self.addEventListener('push', (event) => {
       // Set notification options based on the push data
       const notificationTitle = pushData.title || 'Prayer Diary';
       
+      // Get the proper view ID based on content type
+      let viewId = 'calendar-view'; // Default view
+      if (pushData.contentType) {
+        switch(pushData.contentType.toLowerCase()) {
+          case 'prayer_update':
+          case 'update':
+            viewId = 'updates-view';
+            break;
+          case 'urgent_prayer':
+          case 'urgent':
+            viewId = 'urgent-view';
+            break;
+        }
+      }
+      
       // Enhanced notification options with Android focus
       const notificationOptions = {
         body: pushData.body || 'New prayer notification',
@@ -188,19 +203,19 @@ self.addEventListener('push', (event) => {
         // Enhanced vibration pattern for stronger alerts
         vibrate: pushData.vibrate || [200, 100, 200, 100, 200, 100, 400],
         data: {
-          ...pushData.data || {},
           timestamp: Date.now(),
           contentType: pushData.contentType || 'default',
           contentId: pushData.contentId || null,
-          url: pushData.data?.url || '/',
-          viewId: getViewIdFromContentType(pushData.contentType)
+          viewId: viewId, // Include the calculated viewId
+          // Include all original data
+          ...pushData.data || {}
         },
         // Android settings for heads-up notifications
         requireInteraction: true,
         // Using a unique tag with timestamp to prevent grouping and ensure delivery
         tag: `prayer-diary-${pushData.contentType || 'notification'}-${Date.now()}`,
         renotify: true,
-        actions: pushData.actions || [
+        actions: [
           {
             action: 'view',
             title: 'View'
@@ -226,15 +241,16 @@ self.addEventListener('push', (event) => {
           .then(() => {
             console.log('[Service Worker] Notification shown successfully');
             
-            // After showing the notification, you might want to update some state or database
-            // through a fetch request to your API if needed
+            // After showing the notification, inform any active clients
             return self.clients.matchAll().then(clients => {
               if (clients.length > 0) {
                 // If there are active clients, inform them about the notification
                 clients.forEach(client => {
                   client.postMessage({
                     type: 'NOTIFICATION_RECEIVED',
-                    data: pushData
+                    data: pushData,
+                    viewId: viewId,
+                    contentId: pushData.contentId || null
                   });
                 });
               }
@@ -261,22 +277,6 @@ self.addEventListener('push', (event) => {
   }
 });
 
-// Helper function to get view ID from content type
-function getViewIdFromContentType(contentType) {
-  if (!contentType) return 'calendar-view'; // Default view
-  
-  switch(contentType.toLowerCase()) {
-    case 'prayer_update':
-    case 'update':
-      return 'updates-view';
-    case 'urgent_prayer':
-    case 'urgent':
-      return 'urgent-view';
-    default:
-      return 'calendar-view';
-  }
-}
-
 // Handle notification click and route to correct view
 self.addEventListener('notificationclick', (event) => {
   console.log('[Service Worker] Notification click received:', event);
@@ -298,34 +298,25 @@ self.addEventListener('notificationclick', (event) => {
   
   // Get the viewId directly from notification data if available
   let targetViewId = notificationData.viewId || 'calendar-view';
+  let contentId = notificationData.contentId || null;
+  let contentType = notificationData.contentType || null;
   
-  // Determine the target URL based on the target view
-  let targetRoute = '/';
-  
-  // Map view IDs to routes
-  switch(targetViewId) {
-    case 'updates-view':
-      targetRoute = '/';
-      break;
-    case 'urgent-view':
-      targetRoute = '/';
-      break;
-    default:
-      targetRoute = '/';
-  }
-  
-  // Override with custom URL if provided
-  if (notificationData.url) {
-    targetRoute = notificationData.url;
-  }
-  
-  // Resolve the target URL to absolute URL
+  // Build a URL with query parameters for SPA navigation
   const baseUrl = self.location.origin;
-  const fullUrl = new URL(targetRoute, baseUrl).href;
+  let targetUrl = new URL('/', baseUrl);
   
-  console.log('[Service Worker] Navigation target:', fullUrl, 'View ID:', targetViewId);
+  // Add query parameters to help with SPA routing
+  targetUrl.searchParams.append('view', targetViewId.replace('-view', ''));
+  if (contentId) {
+    targetUrl.searchParams.append('contentId', contentId);
+  }
+  if (contentType) {
+    targetUrl.searchParams.append('contentType', contentType);
+  }
   
-  // Open or focus the target URL in an existing window/tab if possible
+  console.log('[Service Worker] Navigation target URL with params:', targetUrl.href);
+  
+  // Open or focus the target URL
   event.waitUntil(
     clients.matchAll({
       type: 'window',
@@ -346,39 +337,18 @@ self.addEventListener('notificationclick', (event) => {
               data: notificationData
             });
             
-            return focusedClient;
+            // Also navigate using the URL params approach as a backup
+            return focusedClient.navigate(targetUrl.href).then(navigatedClient => {
+              console.log('[Service Worker] Navigated existing client to:', targetUrl.href);
+              return navigatedClient;
+            });
           });
         }
       }
       
-      // If no existing window is found, open a new one
-      console.log('[Service Worker] Opening new window');
-      
-      // Using the root URL ensures the app loads properly before navigation
-      return clients.openWindow(baseUrl).then(windowClient => {
-        if (!windowClient) {
-          console.error('[Service Worker] Failed to open window');
-          return null;
-        }
-        
-        console.log('[Service Worker] New window opened, will navigate after initialization');
-        
-        // Wait for a substantial delay to allow the app to initialize fully
-        // This is critical for proper navigation in PWAs
-        setTimeout(() => {
-          // Post the navigation message with a longer delay for Android
-          if (windowClient.postMessage) {
-            windowClient.postMessage({
-              type: 'NAVIGATE_TO_VIEW',
-              viewId: targetViewId,
-              data: notificationData
-            });
-            console.log('[Service Worker] Navigation message sent to new window');
-          }
-        }, 3000); // Increased delay for Android (3 seconds)
-        
-        return windowClient;
-      });
+      // If no existing window is found, open a new one with the target URL directly
+      console.log('[Service Worker] Opening new window with target URL');
+      return clients.openWindow(targetUrl.href);
     })
   );
 });

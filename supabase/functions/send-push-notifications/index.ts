@@ -33,6 +33,22 @@ const logDebug = (message: string, data?: any) => {
   console.log(`[PUSH-DEBUG] ${message}`, data ? JSON.stringify(data) : '');
 };
 
+// NEW FUNCTION: Get the view ID for navigation based on content type
+function getViewIdFromContentType(contentType: string | null): string {
+  if (!contentType) return 'calendar-view'; // Default view
+  
+  switch(contentType.toLowerCase()) {
+    case 'prayer_update':
+    case 'update':
+      return 'updates-view';
+    case 'urgent_prayer':
+    case 'urgent':
+      return 'urgent-view';
+    default:
+      return 'calendar-view';
+  }
+}
+
 // Handle HTTP requests to the function
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -96,6 +112,9 @@ serve(async (req) => {
     
     logDebug(`Found ${subscriptions.length} subscriptions`);
     
+    // Get view ID for navigation based on content type
+    const viewId = getViewIdFromContentType(contentType);
+    
     // Process each subscription and send notifications
     const results = await Promise.all(
       subscriptions.map(async (subscription) => {
@@ -128,7 +147,10 @@ serve(async (req) => {
             data: {
               contentType: contentType || 'default',
               contentId: contentId || null,
+              viewId: viewId, // ADDED: Include the viewId for direct navigation
               timestamp: Date.now(),
+              // IMPROVED: More navigation data for reliability
+              url: contentType ? `/?view=${contentType.toLowerCase()}&contentId=${contentId || ''}` : '/',
               ...data
             },
             ...otherOptions

@@ -212,6 +212,115 @@ function showInstallButton() {
     }
 }
 
+// NEW FUNCTION: Check for navigation parameters in URL
+function checkForNavigationParams() {
+  // Get URL parameters
+  const urlParams = new URLSearchParams(window.location.search);
+  const viewParam = urlParams.get('view');
+  const contentId = urlParams.get('contentId');
+  const contentType = urlParams.get('contentType');
+  
+  console.log('Checking for navigation parameters:', {
+    viewParam, contentId, contentType
+  });
+  
+  // Only proceed if we have a view parameter
+  if (viewParam) {
+    // Map the view parameter to the actual view ID
+    let viewId;
+    switch (viewParam.toLowerCase()) {
+      case 'updates':
+        viewId = 'updates-view';
+        break;
+      case 'urgent':
+        viewId = 'urgent-view';
+        break;
+      case 'calendar':
+        viewId = 'calendar-view';
+        break;
+      default:
+        viewId = viewParam.includes('-view') ? viewParam : `${viewParam}-view`;
+    }
+    
+    console.log(`Navigation parameters found, should navigate to ${viewId}`);
+    
+    // Use a retry mechanism in case the app isn't fully loaded yet
+    const maxRetries = 10;
+    let retryCount = 0;
+    
+    function attemptNavigation() {
+      // Check if the app is ready for navigation
+      if (isAppReady()) {
+        console.log(`App is ready, navigating to ${viewId}`);
+        
+        // Show the app views if needed
+        const appViews = document.getElementById('app-views');
+        const landingView = document.getElementById('landing-view');
+        
+        if (appViews && appViews.classList.contains('d-none')) {
+          appViews.classList.remove('d-none');
+        }
+        
+        if (landingView && !landingView.classList.contains('d-none')) {
+          landingView.classList.add('d-none');
+        }
+        
+        // Show the target view
+        showView(viewId);
+        
+        // Load the appropriate content based on the view
+        if (viewId === 'calendar-view' && typeof loadPrayerCalendar === 'function') {
+          loadPrayerCalendar();
+        }
+        else if (viewId === 'updates-view' && typeof loadPrayerUpdates === 'function') {
+          loadPrayerUpdates();
+          
+          // If we have a contentId, try to open that specific update
+          if (contentId && typeof viewUpdate === 'function') {
+            setTimeout(() => {
+              viewUpdate(contentId);
+            }, 500);
+          }
+        }
+        else if (viewId === 'urgent-view' && typeof loadUrgentPrayers === 'function') {
+          loadUrgentPrayers();
+          
+          // If we have a contentId, try to open that specific urgent prayer
+          if (contentId && typeof viewUrgentPrayer === 'function') {
+            setTimeout(() => {
+              viewUrgentPrayer(contentId);
+            }, 500);
+          }
+        }
+        
+        // Clear the URL parameters after navigation
+        // This prevents repeated navigation if the page is refreshed
+        if (history.replaceState) {
+          const cleanUrl = window.location.pathname;
+          history.replaceState({}, document.title, cleanUrl);
+        }
+        
+        // Show a toast notification to confirm navigation
+        if (typeof showToast === 'function') {
+          showToast('Notification', 'Opened ' + viewId.replace('-view', '') + ' view', 'info', 3000);
+        }
+      } else {
+        // App isn't ready yet, retry if we haven't exceeded max retries
+        retryCount++;
+        if (retryCount < maxRetries) {
+          console.log(`App not ready, retry ${retryCount}/${maxRetries}...`);
+          setTimeout(attemptNavigation, 500);
+        } else {
+          console.error('Failed to navigate after maximum retries');
+        }
+      }
+    }
+    
+    // Start the navigation attempt process
+    attemptNavigation();
+  }
+}
+
 // Initialize app function
 function initializeApp() {
     // Set initial flags
@@ -232,6 +341,9 @@ function initializeApp() {
         console.log('Service worker registration complete, continuing app initialization');
         // Check for updates after service worker is registered
         checkForAppUpdates();
+        
+        // NEW LINE: Check for navigation parameters (for notification navigation)
+        checkForNavigationParams();
       })
       .catch(error => {
         console.error('Service worker registration failed, continuing without push support:', error);
@@ -287,121 +399,110 @@ function initializeApp() {
     });
 }
 
-// Listen for navigation messages from the service worker
+// REPLACED: Service worker message listener with enhanced version
 navigator.serviceWorker.addEventListener('message', function(event) {
+  // Log all messages for debugging
+  console.log('[Client] Message received from Service Worker:', event.data);
+  
   // Check if the message is a navigation request
   if (event.data && event.data.type === 'NAVIGATE_TO_VIEW') {
-    console.log('Received navigation request from service worker:', event.data);
+    console.log('[Client] Received navigation request from service worker:', event.data);
     
     const viewId = event.data.viewId;
     const notificationData = event.data.data || {};
     
     // Only proceed if view ID is valid
     if (viewId && document.getElementById(viewId)) {
-      console.log(`Navigating to ${viewId} from notification click`);
+      console.log(`[Client] Navigating to ${viewId} from notification click`);
       
-      // Ensure the app is fully initialized before navigating
-      const performNavigation = function() {
-        // If the app views aren't visible yet, make them visible
-        const appViews = document.getElementById('app-views');
-        const landingView = document.getElementById('landing-view');
-        
-        if (appViews && appViews.classList.contains('d-none')) {
-          appViews.classList.remove('d-none');
-        }
-        
-        if (landingView && !landingView.classList.contains('d-none')) {
-          landingView.classList.add('d-none');
-        }
-        
-        // Show the target view
-        showView(viewId);
-        
-        // Call the appropriate loader function based on the view ID
-        if (viewId === 'calendar-view' && typeof loadPrayerCalendar === 'function') {
-          loadPrayerCalendar();
-        }
-        else if (viewId === 'updates-view' && typeof loadPrayerUpdates === 'function') {
-          loadPrayerUpdates();
-          
-          // If we have an update ID, try to open that specific update
-          if (notificationData.contentId && typeof viewUpdate === 'function') {
-            setTimeout(() => {
-              viewUpdate(notificationData.contentId);
-            }, 500);
-          }
-        }
-        else if (viewId === 'urgent-view' && typeof loadUrgentPrayers === 'function') {
-          loadUrgentPrayers();
-          
-          // If we have an urgent prayer ID, try to open that specific urgent prayer
-          if (notificationData.contentId && typeof viewUrgentPrayer === 'function') {
-            setTimeout(() => {
-              viewUrgentPrayer(notificationData.contentId);
-            }, 500);
-          }
-        }
-        
-        // Show a toast notification to confirm navigation
-        if (typeof showToast === 'function') {
-          showToast('Notification', 'Navigated to ' + viewId.replace('-view', '') + ' view', 'info', 3000);
-        }
-      };
+      // Create a more robust navigation handler with retries
+      const maxRetries = 5;
+      let retryCount = 0;
       
-      // Check if the app is ready for navigation
-      if (isAppReady()) {
-        // App is ready, perform navigation immediately
-        performNavigation();
-      } else {
-        // App isn't ready yet, set up a timer to check readiness
-        console.log('App not ready for navigation, will retry...');
-        
-        // Store the navigation request for later
-        window.pendingNotificationNavigation = {
-          viewId: viewId,
-          data: notificationData
-        };
-        
-        // Set up a retry mechanism
-        let retryCount = 0;
-        const maxRetries = 10;
-        const retryInterval = 500; // 500ms between retries
-        
-        const navigationRetryTimer = setInterval(() => {
+      function attemptServiceWorkerNavigation() {
+        // Ensure the app is fully loaded before navigating
+        if (isAppReady()) {
+          console.log(`[Client] App is ready, navigating to ${viewId}`);
+          
+          // If the app views aren't visible yet, make them visible
+          const appViews = document.getElementById('app-views');
+          const landingView = document.getElementById('landing-view');
+          
+          if (appViews && appViews.classList.contains('d-none')) {
+            appViews.classList.remove('d-none');
+          }
+          
+          if (landingView && !landingView.classList.contains('d-none')) {
+            landingView.classList.add('d-none');
+          }
+          
+          // Show the target view
+          try {
+            showView(viewId);
+            console.log(`[Client] Successfully showed view: ${viewId}`);
+          } catch (error) {
+            console.error(`[Client] Error showing view ${viewId}:`, error);
+          }
+          
+          // Call the appropriate loader function based on the view ID
+          try {
+            if (viewId === 'calendar-view' && typeof loadPrayerCalendar === 'function') {
+              loadPrayerCalendar();
+              console.log('[Client] Loaded prayer calendar');
+            }
+            else if (viewId === 'updates-view' && typeof loadPrayerUpdates === 'function') {
+              loadPrayerUpdates();
+              console.log('[Client] Loaded prayer updates');
+              
+              // If we have an update ID, try to open that specific update
+              if (notificationData.contentId && typeof viewUpdate === 'function') {
+                setTimeout(() => {
+                  console.log('[Client] Opening specific update:', notificationData.contentId);
+                  viewUpdate(notificationData.contentId);
+                }, 500);
+              }
+            }
+            else if (viewId === 'urgent-view' && typeof loadUrgentPrayers === 'function') {
+              loadUrgentPrayers();
+              console.log('[Client] Loaded urgent prayers');
+              
+              // If we have an urgent prayer ID, try to open that specific urgent prayer
+              if (notificationData.contentId && typeof viewUrgentPrayer === 'function') {
+                setTimeout(() => {
+                  console.log('[Client] Opening specific urgent prayer:', notificationData.contentId);
+                  viewUrgentPrayer(notificationData.contentId);
+                }, 500);
+              }
+            }
+          } catch (error) {
+            console.error('[Client] Error loading content for view:', error);
+          }
+          
+          // Show a toast notification to confirm navigation
+          if (typeof showToast === 'function') {
+            showToast('Notification', 'Navigated to ' + viewId.replace('-view', '') + ' view', 'info', 3000);
+          }
+        } else {
+          // App isn't ready yet, retry if we haven't exceeded max retries
           retryCount++;
-          console.log(`Navigation retry attempt ${retryCount}/${maxRetries}`);
-          
-          if (isAppReady()) {
-            // App is ready, perform navigation
-            clearInterval(navigationRetryTimer);
-            performNavigation();
-            window.pendingNotificationNavigation = null;
-          }
-          else if (retryCount >= maxRetries) {
-            // Give up after max retries
-            clearInterval(navigationRetryTimer);
-            console.error('Failed to navigate after multiple attempts - app not ready');
+          if (retryCount < maxRetries) {
+            console.log(`[Client] App not ready, retry ${retryCount}/${maxRetries}...`);
+            setTimeout(attemptServiceWorkerNavigation, 800); // Longer delay between retries
+          } else {
+            console.error('[Client] Failed to navigate after maximum retries');
             
             // Show an error toast if available
             if (typeof showToast === 'function') {
               showToast('Navigation Error', 'Could not navigate to the requested view', 'error', 5000);
             }
-            
-            // Force a view change to default view as fallback
-            console.log('Forcing default view as fallback');
-            try {
-              showView('calendar-view');
-              if (typeof loadPrayerCalendar === 'function') {
-                loadPrayerCalendar();
-              }
-            } catch (e) {
-              console.error('Error showing fallback view:', e);
-            }
           }
-        }, retryInterval);
+        }
       }
+      
+      // Start the navigation attempt
+      attemptServiceWorkerNavigation();
     } else {
-      console.warn('Invalid view ID received from service worker:', viewId);
+      console.warn('[Client] Invalid view ID received from service worker:', viewId);
     }
   }
   
@@ -418,25 +519,6 @@ navigator.serviceWorker.addEventListener('message', function(event) {
     }
   }
 });
-
-// Check if the app is ready for navigation
-function isAppReady() {
-  // Check various conditions that indicate app readiness
-  const appViews = document.getElementById('app-views');
-  const isLoggedInFunc = window.isLoggedIn || function() { return false; };
-  
-  // App is ready if:
-  // 1. App views container exists
-  // 2. User is logged in (if we have the function)
-  // 3. Key UI components are initialized
-  const ready = 
-    appViews !== null && 
-    isLoggedInFunc() && 
-    typeof showView === 'function';
-    
-  console.log('App ready check:', ready);
-  return ready;
-}
 
 // Notify service worker that the client is ready
 function notifyServiceWorkerReady() {
@@ -545,10 +627,24 @@ function checkForPostProfileSave() {
     }
 }
 
-// Make sure to call this function when the app initializes
-// Add this line to your app initialization code (app.js or similar)
-// document.addEventListener('DOMContentLoaded', checkForPostProfileSave);
-
+// Check if the app is ready for navigation
+function isAppReady() {
+  // Check various conditions that indicate app readiness
+  const appViews = document.getElementById('app-views');
+  const isLoggedInFunc = window.isLoggedIn || function() { return false; };
+  
+  // App is ready if:
+  // 1. App views container exists
+  // 2. User is logged in (if we have the function)
+  // 3. Key UI components are initialized
+  const ready = 
+    appViews !== null && 
+    isLoggedInFunc() && 
+    typeof showView === 'function';
+    
+  console.log('App ready check:', ready);
+  return ready;
+}
 
 // Setup logout on tab close functionality
 function setupTabCloseLogout() {
@@ -624,9 +720,6 @@ function setupAllModals() {
     // Initialize UI components
     initUI();
     
-    // Check if we have a super admin user and create one if it doesn't exist
-    //checkForSuperAdmin(); removed due to RLS problems. We will always create a super admin via SQL if needed
-    
     // Request notification permissions if supported
     if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
         // Wait a bit before requesting permissions to avoid overwhelming the user on first visit
@@ -637,33 +730,6 @@ function setupAllModals() {
                 }
             });
         }, 5000);
-    }
-}
-
-// Check if super admin exists and create one if needed
-async function checkForSuperAdmin() {
-    try {
-        // Check if super admin account exists
-        const { data: adminUser, error: adminError } = await supabase
-            .from('profiles')
-            .select('id, user_role')
-            .eq('user_role', 'Administrator')
-            .limit(1);
-            
-        if (adminError) throw adminError;
-        
-        // If no admin exists, create one
-        if (!adminUser || adminUser.length === 0) {
-            console.log('No admin user found. Trying to create super admin...');
-            try {
-                // Note: This function is defined in auth.js
-                await createSuperAdmin();
-            } catch (error) {
-                console.error('Error creating super admin:', error);
-            }
-        }
-    } catch (error) {
-        console.error('Error checking for super admin:', error);
     }
 }
 
