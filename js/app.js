@@ -212,23 +212,25 @@ function showInstallButton() {
     }
 }
 
-// NEW FUNCTION: Check for navigation parameters in URL
-function checkForNavigationParams() {
-  // Get URL parameters
-  const urlParams = new URLSearchParams(window.location.search);
-  const viewParam = urlParams.get('view');
-  const contentId = urlParams.get('contentId');
-  const contentType = urlParams.get('contentType');
+// Hash-based navigation handler for app.js
+function setupHashNavigation() {
+  console.log('Setting up hash-based navigation handler');
   
-  console.log('Checking for navigation parameters:', {
-    viewParam, contentId, contentType
-  });
-  
-  // Only proceed if we have a view parameter
-  if (viewParam) {
-    // Map the view parameter to the actual view ID
+  // Function to process hash changes
+  function processHash() {
+    // Get the current hash without the # symbol
+    const hash = window.location.hash.substring(1);
+    console.log('Processing hash navigation:', hash);
+    
+    if (!hash) return; // No hash to process
+    
+    // Split by '/' to get parts
+    const parts = hash.split('/');
+    const viewName = parts[0];
+    
+    // Map view name to view ID
     let viewId;
-    switch (viewParam.toLowerCase()) {
+    switch (viewName.toLowerCase()) {
       case 'updates':
         viewId = 'updates-view';
         break;
@@ -239,21 +241,31 @@ function checkForNavigationParams() {
         viewId = 'calendar-view';
         break;
       default:
-        viewId = viewParam.includes('-view') ? viewParam : `${viewParam}-view`;
+        viewId = viewName.includes('-view') ? viewName : `${viewName}-view`;
     }
     
-    console.log(`Navigation parameters found, should navigate to ${viewId}`);
+    // Check if the view exists
+    if (!document.getElementById(viewId)) {
+      console.warn(`View not found: ${viewId}, falling back to calendar-view`);
+      viewId = 'calendar-view';
+    }
     
-    // Use a retry mechanism in case the app isn't fully loaded yet
-    const maxRetries = 10;
+    // Extract content ID if available (format: #viewName/content/contentId)
+    let contentId = null;
+    if (parts.length >= 3 && parts[1] === 'content') {
+      contentId = parts[2];
+      console.log('Content ID found in hash:', contentId);
+    }
+    
+    // Use a retry mechanism to ensure the app is ready
     let retryCount = 0;
+    const maxRetries = 10;
     
     function attemptNavigation() {
-      // Check if the app is ready for navigation
-      if (isAppReady()) {
-        console.log(`App is ready, navigating to ${viewId}`);
+      if (isLoggedIn()) {
+        console.log(`App is logged in, navigating to ${viewId}`);
         
-        // Show the app views if needed
+        // If the app views aren't visible yet, make them visible
         const appViews = document.getElementById('app-views');
         const landingView = document.getElementById('landing-view');
         
@@ -266,59 +278,110 @@ function checkForNavigationParams() {
         }
         
         // Show the target view
-        showView(viewId);
+        if (typeof showView === 'function') {
+          showView(viewId);
+          console.log(`Successfully showed view: ${viewId}`);
+        } else {
+          console.error('showView function not available');
+        }
         
         // Load the appropriate content based on the view
-        if (viewId === 'calendar-view' && typeof loadPrayerCalendar === 'function') {
-          loadPrayerCalendar();
-        }
-        else if (viewId === 'updates-view' && typeof loadPrayerUpdates === 'function') {
-          loadPrayerUpdates();
-          
-          // If we have a contentId, try to open that specific update
-          if (contentId && typeof viewUpdate === 'function') {
-            setTimeout(() => {
-              viewUpdate(contentId);
-            }, 500);
+        try {
+          if (viewId === 'calendar-view' && typeof loadPrayerCalendar === 'function') {
+            loadPrayerCalendar();
+            console.log('Loaded prayer calendar');
           }
-        }
-        else if (viewId === 'urgent-view' && typeof loadUrgentPrayers === 'function') {
-          loadUrgentPrayers();
-          
-          // If we have a contentId, try to open that specific urgent prayer
-          if (contentId && typeof viewUrgentPrayer === 'function') {
-            setTimeout(() => {
-              viewUrgentPrayer(contentId);
-            }, 500);
+          else if (viewId === 'updates-view' && typeof loadPrayerUpdates === 'function') {
+            loadPrayerUpdates();
+            console.log('Loaded prayer updates');
+            
+            // If we have a contentId, try to open that specific update
+            if (contentId && typeof viewUpdate === 'function') {
+              setTimeout(() => {
+                console.log('Opening specific update:', contentId);
+                viewUpdate(contentId);
+              }, 1000);
+            }
           }
+          else if (viewId === 'urgent-view' && typeof loadUrgentPrayers === 'function') {
+            loadUrgentPrayers();
+            console.log('Loaded urgent prayers');
+            
+            // If we have a contentId, try to open that specific urgent prayer
+            if (contentId && typeof viewUrgentPrayer === 'function') {
+              setTimeout(() => {
+                console.log('Opening specific urgent prayer:', contentId);
+                viewUrgentPrayer(contentId);
+              }, 1000);
+            }
+          }
+        } catch (error) {
+          console.error('Error loading content for view:', error);
         }
         
-        // Clear the URL parameters after navigation
-        // This prevents repeated navigation if the page is refreshed
-        if (history.replaceState) {
-          const cleanUrl = window.location.pathname;
-          history.replaceState({}, document.title, cleanUrl);
-        }
-        
-        // Show a toast notification to confirm navigation
+        // Show a toast notification for successful navigation
         if (typeof showToast === 'function') {
-          showToast('Notification', 'Opened ' + viewId.replace('-view', '') + ' view', 'info', 3000);
+          showToast('Navigation', `Opened ${viewName} view`, 'info', 3000);
         }
       } else {
-        // App isn't ready yet, retry if we haven't exceeded max retries
+        // App isn't logged in yet, retry if we haven't exceeded max retries
         retryCount++;
         if (retryCount < maxRetries) {
           console.log(`App not ready, retry ${retryCount}/${maxRetries}...`);
-          setTimeout(attemptNavigation, 500);
+          setTimeout(attemptNavigation, 1000);
         } else {
-          console.error('Failed to navigate after maximum retries');
+          console.error('Failed to navigate after maximum retries - not logged in');
+          
+          // Store the navigation intent for after login
+          sessionStorage.setItem('pendingNavigation', JSON.stringify({
+            viewId: viewId,
+            contentId: contentId
+          }));
+          
+          console.log('Stored navigation intent for after login');
         }
       }
     }
     
-    // Start the navigation attempt process
+    // Start navigation process
     attemptNavigation();
   }
+  
+  // Handle hash changes (trigger navigation when hash changes)
+  window.addEventListener('hashchange', processHash);
+  
+  // Process initial hash (if present on page load)
+  processHash();
+  
+  // Also check for any stored navigation after login
+  document.addEventListener('login-state-changed', function(event) {
+    if (event.detail && event.detail.loggedIn) {
+      try {
+        const pendingNav = sessionStorage.getItem('pendingNavigation');
+        if (pendingNav) {
+          const navigation = JSON.parse(pendingNav);
+          console.log('Found pending navigation after login:', navigation);
+          
+          // Clear the stored navigation
+          sessionStorage.removeItem('pendingNavigation');
+          
+          // Wait a bit to let the login complete then navigate
+          setTimeout(() => {
+            const viewName = navigation.viewId.replace('-view', '');
+            let hash = `#${viewName}`;
+            if (navigation.contentId) {
+              hash += `/content/${navigation.contentId}`;
+            }
+            
+            // Set the hash to trigger navigation
+            window.location.hash = hash;
+          }, 1000);
+        }
+      } catch (e) {
+        console.error('Error processing pending navigation:', e);
+      }
+    }
+  });
 }
 
 // Initialize app function
@@ -341,9 +404,6 @@ function initializeApp() {
         console.log('Service worker registration complete, continuing app initialization');
         // Check for updates after service worker is registered
         checkForAppUpdates();
-        
-        // NEW LINE: Check for navigation parameters (for notification navigation)
-        checkForNavigationParams();
       })
       .catch(error => {
         console.error('Service worker registration failed, continuing without push support:', error);
@@ -360,6 +420,9 @@ function initializeApp() {
     
     // Set up tab close detection for logout
     setupTabCloseLogout();
+    
+    // Set up hash-based navigation
+    setupHashNavigation();
     
     // Force refresh of the drawer navigation after a short delay
     // This ensures any dynamically added menu items are included
@@ -399,7 +462,7 @@ function initializeApp() {
     });
 }
 
-// REPLACED: Service worker message listener with enhanced version
+// Listen for navigation messages from the service worker
 navigator.serviceWorker.addEventListener('message', function(event) {
   // Log all messages for debugging
   console.log('[Client] Message received from Service Worker:', event.data);
@@ -415,92 +478,17 @@ navigator.serviceWorker.addEventListener('message', function(event) {
     if (viewId && document.getElementById(viewId)) {
       console.log(`[Client] Navigating to ${viewId} from notification click`);
       
-      // Create a more robust navigation handler with retries
-      const maxRetries = 5;
-      let retryCount = 0;
+      // Get the correct viewName and contentId
+      const viewName = viewId.replace('-view', '');
+      const contentId = notificationData.contentId;
       
-      function attemptServiceWorkerNavigation() {
-        // Ensure the app is fully loaded before navigating
-        if (isAppReady()) {
-          console.log(`[Client] App is ready, navigating to ${viewId}`);
-          
-          // If the app views aren't visible yet, make them visible
-          const appViews = document.getElementById('app-views');
-          const landingView = document.getElementById('landing-view');
-          
-          if (appViews && appViews.classList.contains('d-none')) {
-            appViews.classList.remove('d-none');
-          }
-          
-          if (landingView && !landingView.classList.contains('d-none')) {
-            landingView.classList.add('d-none');
-          }
-          
-          // Show the target view
-          try {
-            showView(viewId);
-            console.log(`[Client] Successfully showed view: ${viewId}`);
-          } catch (error) {
-            console.error(`[Client] Error showing view ${viewId}:`, error);
-          }
-          
-          // Call the appropriate loader function based on the view ID
-          try {
-            if (viewId === 'calendar-view' && typeof loadPrayerCalendar === 'function') {
-              loadPrayerCalendar();
-              console.log('[Client] Loaded prayer calendar');
-            }
-            else if (viewId === 'updates-view' && typeof loadPrayerUpdates === 'function') {
-              loadPrayerUpdates();
-              console.log('[Client] Loaded prayer updates');
-              
-              // If we have an update ID, try to open that specific update
-              if (notificationData.contentId && typeof viewUpdate === 'function') {
-                setTimeout(() => {
-                  console.log('[Client] Opening specific update:', notificationData.contentId);
-                  viewUpdate(notificationData.contentId);
-                }, 500);
-              }
-            }
-            else if (viewId === 'urgent-view' && typeof loadUrgentPrayers === 'function') {
-              loadUrgentPrayers();
-              console.log('[Client] Loaded urgent prayers');
-              
-              // If we have an urgent prayer ID, try to open that specific urgent prayer
-              if (notificationData.contentId && typeof viewUrgentPrayer === 'function') {
-                setTimeout(() => {
-                  console.log('[Client] Opening specific urgent prayer:', notificationData.contentId);
-                  viewUrgentPrayer(notificationData.contentId);
-                }, 500);
-              }
-            }
-          } catch (error) {
-            console.error('[Client] Error loading content for view:', error);
-          }
-          
-          // Show a toast notification to confirm navigation
-          if (typeof showToast === 'function') {
-            showToast('Notification', 'Navigated to ' + viewId.replace('-view', '') + ' view', 'info', 3000);
-          }
-        } else {
-          // App isn't ready yet, retry if we haven't exceeded max retries
-          retryCount++;
-          if (retryCount < maxRetries) {
-            console.log(`[Client] App not ready, retry ${retryCount}/${maxRetries}...`);
-            setTimeout(attemptServiceWorkerNavigation, 800); // Longer delay between retries
-          } else {
-            console.error('[Client] Failed to navigate after maximum retries');
-            
-            // Show an error toast if available
-            if (typeof showToast === 'function') {
-              showToast('Navigation Error', 'Could not navigate to the requested view', 'error', 5000);
-            }
-          }
-        }
+      // Use hash navigation instead of directly calling showView
+      // This leverages our hash navigation system for consistency
+      if (contentId) {
+        window.location.hash = `#${viewName}/content/${contentId}`;
+      } else {
+        window.location.hash = `#${viewName}`;
       }
-      
-      // Start the navigation attempt
-      attemptServiceWorkerNavigation();
     } else {
       console.warn('[Client] Invalid view ID received from service worker:', viewId);
     }

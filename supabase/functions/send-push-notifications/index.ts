@@ -33,7 +33,7 @@ const logDebug = (message: string, data?: any) => {
   console.log(`[PUSH-DEBUG] ${message}`, data ? JSON.stringify(data) : '');
 };
 
-// NEW FUNCTION: Get the view ID for navigation based on content type
+// Get the view ID for navigation based on content type
 function getViewIdFromContentType(contentType: string | null): string {
   if (!contentType) return 'calendar-view'; // Default view
   
@@ -47,6 +47,22 @@ function getViewIdFromContentType(contentType: string | null): string {
     default:
       return 'calendar-view';
   }
+}
+
+// Generate a hash-based navigation URL
+function getNavigationUrl(contentType: string | null, contentId: string | null): string {
+  // Get view name without -view suffix
+  const viewName = getViewIdFromContentType(contentType).replace('-view', '');
+  
+  // Create hash URL
+  let hashUrl = `/#${viewName}`;
+  
+  // Add content ID if available
+  if (contentId) {
+    hashUrl += `/content/${contentId}`;
+  }
+  
+  return hashUrl;
 }
 
 // Handle HTTP requests to the function
@@ -115,6 +131,9 @@ serve(async (req) => {
     // Get view ID for navigation based on content type
     const viewId = getViewIdFromContentType(contentType);
     
+    // Get hash-based navigation URL
+    const hashUrl = getNavigationUrl(contentType, contentId);
+    
     // Process each subscription and send notifications
     const results = await Promise.all(
       subscriptions.map(async (subscription) => {
@@ -147,10 +166,10 @@ serve(async (req) => {
             data: {
               contentType: contentType || 'default',
               contentId: contentId || null,
-              viewId: viewId, // ADDED: Include the viewId for direct navigation
+              viewId: viewId, // Include the viewId for direct navigation
               timestamp: Date.now(),
-              // IMPROVED: More navigation data for reliability
-              url: contentType ? `/?view=${contentType.toLowerCase()}&contentId=${contentId || ''}` : '/',
+              // Use hash-based navigation
+              url: hashUrl,
               ...data
             },
             ...otherOptions

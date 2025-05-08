@@ -881,7 +881,7 @@ async function updateProfileNotificationSettings(newMethod = 'none') {
   }
 }
 
-// Enhanced test push notification with platform detection
+// Replace the existing testPushNotification function in push-notifications.js with this version
 async function testPushNotification() {
   try {
     console.log('Sending test push notification...');
@@ -889,22 +889,54 @@ async function testPushNotification() {
     // Log detailed device debug information
     const deviceInfo = logDeviceDebugInfo();
     
-    // Prepare notification parameters with platform-specific optimizations
+    // Choose which content type to test - alternating between update and urgent
+    // Use local storage to track which one we last tested
+    const lastTestedType = localStorage.getItem('lastPushTestType') || 'update';
+    const testContentType = lastTestedType === 'update' ? 'urgent_prayer' : 'prayer_update';
+    
+    // Store the type we're testing now
+    localStorage.setItem('lastPushTestType', testContentType);
+    
+    // Create a unique test ID
+    const testId = Date.now().toString();
+    
+    // Get the correct view ID for this content type
+    const viewId = testContentType === 'prayer_update' ? 'updates-view' : 'urgent-view';
+    const viewName = viewId.replace('-view', '');
+    
+    // Show a toast to let the user know what's being tested
+    if (typeof showToast === 'function') {
+      showToast(
+        'Test Notification', 
+        `Sending test ${testContentType.replace('_', ' ')} notification... This will test navigation to the ${testContentType === 'prayer_update' ? 'Prayer Updates' : 'Urgent Prayers'} page.`, 
+        'info', 
+        4000
+      );
+    }
+    
+    // Prepare notification parameters with hash-based navigation
     const notificationParams = {
       userIds: [getUserId()],
-      title: 'Prayer Diary Test',
-      message: 'This is a test notification from Prayer Diary.',
-      contentType: 'test',
-      contentId: '00000000-0000-0000-0000-000000000000',
+      title: `Test ${testContentType === 'prayer_update' ? 'Prayer Update' : 'Urgent Prayer'}`,
+      message: `This is a test ${testContentType.replace('_', ' ')} notification. Tap to open.`,
+      contentType: testContentType,
+      contentId: testId,
+      viewId: viewId, // Explicitly include the view ID
       data: {
-        url: '/calendar-view',
-        timestamp: Date.now()
+        // Use the new hash-based navigation format
+        url: `/#${viewName}/content/${testId}`,
+        timestamp: Date.now(),
+        testMode: true,
+        // Include these directly in the data object for redundancy
+        viewId: viewId,
+        contentId: testId,
+        contentType: testContentType
       },
       // Visual properties to ensure proper display
       requireInteraction: true,
       renotify: true,
       vibrate: [100, 50, 100, 50, 100, 50, 100], 
-      tag: 'PECH-prayer-test-' + Date.now()
+      tag: `PECH-prayer-test-${testContentType}-${testId}`
     };
     
     // Add Android-specific parameters
@@ -921,7 +953,7 @@ async function testPushNotification() {
         }
       ];
       // Android requires more descriptive messages
-      notificationParams.message = 'This is a test notification from Prayer Diary. Tap to open the app.';
+      notificationParams.message = `This is a test ${testContentType.replace('_', ' ')} notification. Tap to open the ${testContentType === 'prayer_update' ? 'Prayer Updates' : 'Urgent Prayers'} page.`;
     }
     
     // The Edge Function will handle additional platform-specific formatting
@@ -931,13 +963,35 @@ async function testPushNotification() {
     
     if (error) {
       console.error('Error sending test notification:', error);
+      
+      // Show error message
+      if (typeof showToast === 'function') {
+        showToast('Error', `Failed to send notification: ${error.message}`, 'error', 5000);
+      }
+      
       return false;
     }
     
     console.log('Test notification result:', data);
+    
+    // Show a success message with clearer instructions
+    if (typeof showToast === 'function') {
+      const successMessage = window.PUSH_NOTIFICATION.IS_ANDROID ? 
+        `Test notification sent successfully. If the app is already open, you should see it soon. If not, look for it in your notification tray and tap it to test opening the app and navigating to the ${viewName} view.` :
+        `Test notification sent successfully. Wait for it to arrive and tap it to test navigation.`;
+      
+      showToast('Notification Sent', successMessage, 'success', 10000);
+    }
+    
     return true;
   } catch (error) {
     console.error('Error in testPushNotification:', error);
+    
+    // Show an error message
+    if (typeof showToast === 'function') {
+      showToast('Notification Error', `Failed to send test notification: ${error.message}`, 'error', 5000);
+    }
+    
     return false;
   }
 }

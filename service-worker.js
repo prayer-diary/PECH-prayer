@@ -1,7 +1,7 @@
 // Service Worker for PECH Prayer Diary PWA
 
 // Cache version - update this number to force refresh of caches
-const CACHE_VERSION = '1.1.041';
+const CACHE_VERSION = '1.1.042';
 const CACHE_NAME = `prayer-diary-cache-${CACHE_VERSION}`;
 
 // App shell files to cache initially
@@ -301,56 +301,80 @@ self.addEventListener('notificationclick', (event) => {
   let contentId = notificationData.contentId || null;
   let contentType = notificationData.contentType || null;
   
-  // Build a URL with query parameters for SPA navigation
+  // Get view name without the "-view" suffix for the URL
+  const viewName = targetViewId.replace('-view', '');
+  
+  // Build a direct URL with hash routing for SPA navigation
   const baseUrl = self.location.origin;
   let targetUrl = new URL('/', baseUrl);
   
-  // Add query parameters to help with SPA routing
-  targetUrl.searchParams.append('view', targetViewId.replace('-view', ''));
+  // Change to hash-based routing which is more reliable for SPAs
+  targetUrl.hash = `#${viewName}`;
+  
+  // Add content ID as a separate hash parameter if available
   if (contentId) {
-    targetUrl.searchParams.append('contentId', contentId);
-  }
-  if (contentType) {
-    targetUrl.searchParams.append('contentType', contentType);
+    targetUrl.hash += `/content/${contentId}`;
   }
   
-  console.log('[Service Worker] Navigation target URL with params:', targetUrl.href);
+  console.log('[Service Worker] Navigation target URL:', targetUrl.href);
   
-  // Open or focus the target URL
-  event.waitUntil(
-    clients.matchAll({
-      type: 'window',
-      includeUncontrolled: true
-    })
-    .then((windowClients) => {
-      // Check if there's already a window/tab open with our origin
-      for (const client of windowClients) {
-        if (client.url.startsWith(baseUrl) && 'focus' in client) {
-          // Found a matching client, focus it and navigate
-          return client.focus().then((focusedClient) => {
-            console.log('[Service Worker] Focused existing client');
-            
-            // Post a message to navigate to the target view
-            focusedClient.postMessage({
+  // This function will focus an existing client or open a new window
+  const navigateToTarget = async () => {
+    try {
+      // First try to find existing windows/tabs
+      const windowClients = await clients.matchAll({
+        type: 'window',
+        includeUncontrolled: true
+      });
+      
+      // Check if we have any open windows with our origin
+      let client = windowClients.find(c => c.url.startsWith(baseUrl));
+      
+      if (client) {
+        // Found an existing client, focus it
+        console.log('[Service Worker] Found existing client, focusing and navigating it');
+        client = await client.focus();
+        
+        // Post message first for internal SPA navigation
+        client.postMessage({
+          type: 'NAVIGATE_TO_VIEW',
+          viewId: targetViewId,
+          data: notificationData
+        });
+        
+        // Also navigate to the URL with hash for fallback
+        return client.navigate(targetUrl.href);
+      } else {
+        // If no existing window/tab, open a new one with the target URL
+        console.log('[Service Worker] No existing client found, opening new window');
+        
+        // Force open to the exact hash URL to ensure it works
+        const newClient = await clients.openWindow(targetUrl.href);
+        console.log('[Service Worker] New window opened');
+        
+        // Wait a moment then send the navigation message
+        setTimeout(() => {
+          if (newClient) {
+            newClient.postMessage({
               type: 'NAVIGATE_TO_VIEW',
               viewId: targetViewId,
               data: notificationData
             });
-            
-            // Also navigate using the URL params approach as a backup
-            return focusedClient.navigate(targetUrl.href).then(navigatedClient => {
-              console.log('[Service Worker] Navigated existing client to:', targetUrl.href);
-              return navigatedClient;
-            });
-          });
-        }
+          }
+        }, 1500);
+        
+        return newClient;
       }
+    } catch (error) {
+      console.error('[Service Worker] Navigation error:', error);
       
-      // If no existing window is found, open a new one with the target URL directly
-      console.log('[Service Worker] Opening new window with target URL');
-      return clients.openWindow(targetUrl.href);
-    })
-  );
+      // Last resort fallback: Try direct window open with minimal URL
+      return clients.openWindow(baseUrl + '/#' + viewName);
+    }
+  };
+  
+  // Ensure the event waits for our async navigation
+  event.waitUntil(navigateToTarget());
 });
 
 // Listen for messages from the clients
