@@ -142,7 +142,7 @@ serve(async (req) => {
             platformPayload = {
               ...basePayload,
               // Set icon to the Android-specific notification icon
-              icon: '/img/icons/android/notification_icon.png',  // Use the white silhouette icon
+              badge: '/img/icons/android/notification_icon.png',  // Use the white silhouette icon
               // Android requires these for optimal visibility - updated to max priority
               priority: 'max',
               // Enhanced vibration pattern for stronger alerts
