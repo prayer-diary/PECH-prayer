@@ -1,7 +1,7 @@
 // Service Worker for PECH Prayer Diary PWA
 
 // Cache version - update this number to force refresh of caches
-const CACHE_VERSION = '1.1.050';
+const CACHE_VERSION = '1.1.051';
 const CACHE_NAME = `prayer-diary-cache-${CACHE_VERSION}`;
 
 // App shell files to cache initially
@@ -160,7 +160,7 @@ self.addEventListener('fetch', (event) => {
   }
 });
 
-// Enhanced Push event handler
+// Enhanced Push event handler - FIXED: No longer informs clients immediately
 self.addEventListener('push', (event) => {
   console.log('[Service Worker] Push received:', event);
   
@@ -241,20 +241,8 @@ self.addEventListener('push', (event) => {
           .then(() => {
             console.log('[Service Worker] Notification shown successfully');
             
-            // After showing the notification, inform any active clients
-            return self.clients.matchAll().then(clients => {
-              if (clients.length > 0) {
-                // If there are active clients, inform them about the notification
-                clients.forEach(client => {
-                  client.postMessage({
-                    type: 'NOTIFICATION_RECEIVED',
-                    data: pushData,
-                    viewId: viewId,
-                    contentId: pushData.contentId || null
-                  });
-                });
-              }
-            });
+            // FIXED: Removed the code that immediately sends messages to clients
+            // Let the notificationclick event handle user interaction
           })
           .catch(error => {
             console.error('[Service Worker] Error showing notification:', error);
@@ -293,6 +281,7 @@ self.addEventListener('notificationclick', (event) => {
   
   // If dismiss action was clicked, just close the notification
   if (actionClicked === 'dismiss') {
+    console.log('[Service Worker] User dismissed notification, not navigating');
     return;
   }
   
@@ -335,7 +324,16 @@ self.addEventListener('notificationclick', (event) => {
         console.log('[Service Worker] Found existing client, focusing and navigating it');
         client = await client.focus();
         
-        // Post message first for internal SPA navigation
+        // IMPORTANT: Now that the user clicked the notification, inform the client
+        // about the notification content and where to navigate
+        client.postMessage({
+          type: 'NOTIFICATION_CLICKED',  // Changed from NOTIFICATION_RECEIVED to NOTIFICATION_CLICKED
+          viewId: targetViewId,
+          data: notificationData,
+          contentId: contentId
+        });
+        
+        // Also post the navigation message
         client.postMessage({
           type: 'NAVIGATE_TO_VIEW',
           viewId: targetViewId,
@@ -355,6 +353,15 @@ self.addEventListener('notificationclick', (event) => {
         // Wait a moment then send the navigation message
         setTimeout(() => {
           if (newClient) {
+            // IMPORTANT: First inform about the notification that was clicked
+            newClient.postMessage({
+              type: 'NOTIFICATION_CLICKED',  // Changed type to be clear this was clicked
+              viewId: targetViewId,
+              data: notificationData,
+              contentId: contentId
+            });
+            
+            // Then send navigation request
             newClient.postMessage({
               type: 'NAVIGATE_TO_VIEW',
               viewId: targetViewId,

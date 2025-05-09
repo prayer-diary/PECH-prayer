@@ -166,11 +166,39 @@ function setupPushNotificationListeners() {
   if (navigator.serviceWorker) {
     navigator.serviceWorker.addEventListener('message', function(event) {
       // Handle notification related messages
-      if (event.data && event.data.type === 'NOTIFICATION_RECEIVED') {
-        console.log('Received notification message from service worker:', event.data);
-        // Could add specific notification handling here
+      if (event.data && event.data.type === 'NOTIFICATION_CLICKED') {
+        console.log('Received notification click message from service worker:', event.data);
+        // Process notification that was clicked by the user
+        processNotificationClick(event.data);
       }
     });
+  }
+}
+
+// Add this new function to process notification clicks
+function processNotificationClick(notificationData) {
+  try {
+    // Get the view ID and content ID
+    const viewId = notificationData.viewId;
+    const contentId = notificationData.contentId;
+    
+    console.log(`Processing notification click: viewId=${viewId}, contentId=${contentId}`);
+    
+    // Show a toast notification to confirm the user action
+    if (typeof showToast === 'function') {
+      showToast(
+        'Notification',
+        `Opening ${viewId.replace('-view', '')} content`,
+        'info',
+        3000
+      );
+    }
+    
+    // Any additional processing for specific notification types can be added here
+    // For example, marking a notification as read in the database
+    
+  } catch (error) {
+    console.error('Error processing notification click:', error);
   }
 }
 
