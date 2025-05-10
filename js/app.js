@@ -257,6 +257,22 @@ function setupHashNavigation() {
       console.log('Content ID found in hash:', contentId);
     }
     
+    // Check if splash screen is still active
+    const splashScreen = document.getElementById('splash-screen');
+    if (splashScreen) {
+      console.log('Splash screen still active, deferring navigation');
+      // Wait for splash to complete, then retry
+      const splashObserver = new MutationObserver((mutations, observer) => {
+        if (!document.getElementById('splash-screen')) {
+          observer.disconnect();
+          console.log('Splash screen removed, retrying navigation');
+          processHash();
+        }
+      });
+      splashObserver.observe(document.body, { childList: true, subtree: true });
+      return;
+    }
+    
     // Use a retry mechanism to ensure the app is ready
     let retryCount = 0;
     const maxRetries = 10;
@@ -564,17 +580,42 @@ function initSplashScreen() {
             document.getElementById('landing-view').classList.remove('splash-active');
             document.getElementById('app-views').classList.remove('splash-active');
             
-            // Show initial view as normal (depends on logged in state)
+            // Check if user is coming from a notification by checking the hash
+            const hash = window.location.hash;
+            const path = window.location.pathname;
+            
+            // Determine if this is a notification-based route
+            const isNotificationRoute = hash && (
+                hash.includes('/content/') || // Has specific content ID
+                hash.includes('updates') || 
+                hash.includes('urgent') ||
+                hash.includes('calendar')
+            );
+            
+            // Only redirect to default view if:
+            // 1. No hash is present (no intended route)
+            // 2. User is at root path without specific content
+            // 3. Not coming from a notification
+            const shouldDefaultRoute = !hash || (!isNotificationRoute && (path === '/' || path === '/PECH-prayer/' || path === '/PECH-prayer'));
+            
+            // Show initial view based on logged in state and notification status
             if (isLoggedIn()) {
                 // Show the app views
                 document.getElementById('landing-view').classList.add('d-none');
                 document.getElementById('app-views').classList.remove('d-none');
-                // Show calendar view
-                showView('calendar-view');
-                // Load prayer calendar
-                loadPrayerCalendar();
+                
+                if (shouldDefaultRoute) {
+                    // Go to default view (calendar)
+                    showView('calendar-view');
+                    loadPrayerCalendar();
+                    console.log('Splash complete: showing default calendar view');
+                } else {
+                    // Let hash navigation handle the specific route
+                    console.log('Splash complete: hash-based navigation will handle routing');
+                    // The hash navigation system will automatically process the route after splash
+                }
             } else {
-                // If we're handling installation, don't show login yet
+                // User not logged in - handle installation flow
                 if (!sessionStorage.getItem('handlingInstallation')) {
                     // Only show login if we're not handling installation
                     console.log('Not handling installation, safe to show login');
@@ -582,6 +623,15 @@ function initSplashScreen() {
                         // Restore auth functionality
                         window.restoreAuthFunctionality = true;
                         initAuth();
+                        
+                        // Store the intended route for after login if present
+                        if (!shouldDefaultRoute && hash) {
+                            sessionStorage.setItem('pendingNavigation', JSON.stringify({
+                                viewId: hash.split('/')[0].substring(1) + '-view',
+                                contentId: hash.includes('/content/') ? hash.split('/content/')[1] : null
+                            }));
+                            console.log('Stored pending navigation for after login:', hash);
+                        }
                         
                         // Use standard login function which has proper event handlers
                         openAuthModal('login');
