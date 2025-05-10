@@ -179,52 +179,66 @@ function setupTestNotificationButton() {
     }
 }
 
-// FIXED TEST NOTIFICATION FUNCTION - Now uses service worker properly
-document.getElementById('test-notification-btn')?.addEventListener('click', async function() {
+// Send a test notification - FIXED VERSION USING SERVICE WORKER
+async function sendTestNotification() {
     console.log('[Profile] Test notification button clicked');
     
     // Check if notifications are supported
     if (!('Notification' in window)) {
-        DebugPanel.error('This browser does not support notifications', {type: 'Notification API'});
+        if (typeof DebugPanel !== 'undefined') {
+            DebugPanel.error('This browser does not support notifications', {type: 'Notification API'});
+        }
+        showNotification('Error', 'This browser does not support notifications');
         return;
     }
     
-    // Try to get the active service worker registration
-    const registrationPromise = navigator.serviceWorker.getRegistration('/');
-    
-    registrationPromise.then((registration) => {
+    try {
+        // Try to get the active service worker registration
+        const registration = await navigator.serviceWorker.getRegistration('/');
+        
         if (!registration) {
             console.error('No service worker registration found');
-            DebugPanel.error('Service worker not registered', {type: 'Service Worker'});
+            if (typeof DebugPanel !== 'undefined') {
+                DebugPanel.error('Service worker not registered', {type: 'Service Worker'});
+            }
+            showNotification('Error', 'Service worker not registered. Notifications may not work properly.');
             return;
         }
         
         // Check permission state
-        Notification.requestPermission().then((permission) => {
-            if (permission === 'granted') {
-                // Send test notification using service worker
-                sendServiceWorkerNotification(registration);
-            } else {
+        const permission = await Notification.requestPermission();
+        
+        if (permission === 'granted') {
+            // Send test notification using service worker
+            await sendServiceWorkerNotification(registration);
+        } else {
+            if (typeof DebugPanel !== 'undefined') {
                 DebugPanel.error('Notification permission denied', {type: 'Permission'});
             }
-        });
-    }).catch((error) => {
-        console.error('Error getting service worker registration:', error);
-        DebugPanel.error('Service worker registration error', {type: 'Service Worker', error: error.message});
-    });
-});
+            showNotification('Error', 'Notification permission is required to show notifications.');
+        }
+    } catch (error) {
+        console.error('Error sending test notification:', error);
+        if (typeof DebugPanel !== 'undefined') {
+            DebugPanel.error('Test notification error', {type: 'Error', error: error.message});
+        }
+        showNotification('Error', `Failed to send test notification: ${error.message}`);
+    }
+}
 
 // New function to send test notification via service worker
-function sendServiceWorkerNotification(registration) {
+async function sendServiceWorkerNotification(registration) {
     if (!registration || !registration.showNotification) {
         console.error('Service worker registration not available or showNotification not supported');
-        DebugPanel.error('Cannot send notification: Service worker not available', {type: 'Service Worker'});
+        if (typeof DebugPanel !== 'undefined') {
+            DebugPanel.error('Cannot send notification: Service worker not available', {type: 'Service Worker'});
+        }
         return Promise.reject(new Error('Service Worker not available'));
     }
     
     const testTitle = 'Prayer Diary Test';
     const testOptions = {
-        body: 'This is a test notification from Prayer Diary.',
+        body: 'This is a test notification from Prayer Diary. If you can see this, notifications are working correctly!',
         icon: '/img/icons/ios/192.png',
         badge: '/img/icons/ios/72.png',
         tag: 'test-notification',
@@ -237,15 +251,20 @@ function sendServiceWorkerNotification(registration) {
     
     console.log('[Profile] Sending test notification via service worker');
     
-    return registration.showNotification(testTitle, testOptions)
-        .then(() => {
-            console.log('[Profile] Test notification sent successfully');
+    try {
+        await registration.showNotification(testTitle, testOptions);
+        console.log('[Profile] Test notification sent successfully');
+        if (typeof DebugPanel !== 'undefined') {
             DebugPanel.log('Test notification sent successfully', {type: 'Success'});
-        })
-        .catch((error) => {
-            console.error('[Profile] Error sending test notification:', error);
+        }
+        showNotification('Success', 'Test notification sent! You should see it now.');
+    } catch (error) {
+        console.error('[Profile] Error sending test notification:', error);
+        if (typeof DebugPanel !== 'undefined') {
             DebugPanel.error('Failed to send test notification', {type: 'Error', error: error.message});
-        });
+        }
+        throw error;
+    }
 }
 
 // Optional: Add a function to check notification permission status
@@ -282,9 +301,10 @@ async function initializeNotificationStatus() {
 document.addEventListener('DOMContentLoaded', initializeNotificationStatus);
 
 // Also initialize when the profile view becomes visible
-document.getElementById('profile-view')?.addEventListener('viewshown', initializeNotificationStatus);
-
-// REMOVED THE OLD SENDTESTNOTIFICATION FUNCTION ENTIRELY
+const profileView = document.getElementById('profile-view');
+if (profileView) {
+    profileView.addEventListener('viewshown', initializeNotificationStatus);
+}
 
 // Update the profile loading function to handle the new notification structure
 function loadProfileNotificationSettings(profile) {
@@ -1253,8 +1273,11 @@ function fileToBase64(file) {
 // Add this to ensure notification handlers are initialized when the profile view is shown
 document.addEventListener('DOMContentLoaded', function() {
     // Handle notification section when profile view is shown
-    document.getElementById('nav-profile').addEventListener('click', function() {
-        // Wait for profile to load then initialize notifications
-        setTimeout(initProfileNotifications, 500);
-    });
+    const profileNavLink = document.getElementById('nav-profile');
+    if (profileNavLink) {
+        profileNavLink.addEventListener('click', function() {
+            // Wait for profile to load then initialize notifications
+            setTimeout(initProfileNotifications, 500);
+        });
+    }
 });
