@@ -7,6 +7,7 @@ window.PUSH_NOTIFICATION.PERMISSION_PROMPT_KEY = 'pushNotificationPermissionProm
 window.PUSH_NOTIFICATION.PERMISSION_PROMPT_DELAY = 3000; // 3 seconds
 window.PUSH_NOTIFICATION.IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 window.PUSH_NOTIFICATION.IS_ANDROID = /Android/.test(navigator.userAgent);
+if (window.PUSH_NOTIFICATION.IS_IOS) {console.log("****IOS SET ***")};
 
 // Variable to track if initialization has been done
 let pushInitialized = false;
