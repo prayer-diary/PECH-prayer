@@ -184,7 +184,7 @@ serve(async (req) => {
     const primaryEmail = 'prayerdiary@pech.co.uk';
     
     // Create HTML content
-    const typeLabel = requestData.type === 'update' ? 'Prayer Update' : 'Urgent Prayer Request';
+    const typeLabel = requestData.type === 'update' ? 'Prayer Update' : 'Prayer Request';
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #483D8B;">${requestData.title}</h2>
