@@ -194,8 +194,9 @@ function saveProfileNotificationSettings() {
 }
 
 // Event listeners for notification radio buttons
-function handleNotificationChange() {
+async function handleNotificationChange() {
     const notificationYes = document.getElementById('notification-yes');
+    const notificationNo = document.getElementById('notification-no');
     const notificationTestingPanel = document.getElementById('notification-testing-panel');
     
     if (notificationYes && notificationYes.checked) {
@@ -203,6 +204,50 @@ function handleNotificationChange() {
         notificationTestingPanel.classList.remove('d-none');
         // Keep phone number section hidden for now (SMS/WhatsApp are dormant)
         document.getElementById('phone-number-section').classList.add('d-none');
+        
+        // Immediately request notification permission
+        console.log('User selected "Yes" for notifications, requesting permission...');
+        
+        // Check for iOS non-standalone first
+        if (IS_IOS && !IS_STANDALONE) {
+            // Show iOS installation requirement
+            setTimeout(() => {
+                showIOSInstallInstructions();
+                // Revert to "No" selection
+                notificationYes.checked = false;
+                notificationNo.checked = true;
+                handleNotificationChange(); // Re-run to hide testing panel
+            }, 300);
+            return;
+        }
+        
+        // Request notification permission immediately
+        try {
+            const granted = await requestNotificationPermission();
+            
+            if (!granted) {
+                // Permission was denied, revert to "No"
+                setTimeout(() => {
+                    notificationYes.checked = false;
+                    notificationNo.checked = true;
+                    handleNotificationChange(); // Re-run to hide testing panel
+                    showNotification('Permission Required', 'Notification permission was denied. You can re-enable it later in your browser settings.', 'warning');
+                }, 300);
+            } else {
+                // Permission granted successfully
+                console.log('Notification permission granted');
+                showNotification('Success', 'Notifications enabled! You\'ll now receive prayer updates.', 'success');
+            }
+        } catch (error) {
+            console.error('Error requesting push permission:', error);
+            // Error occurred, revert to "No"
+            setTimeout(() => {
+                notificationYes.checked = false;
+                notificationNo.checked = true;
+                handleNotificationChange(); // Re-run to hide testing panel
+                showNotification('Error', 'Unable to enable notifications. Please try again later.', 'error');
+            }, 300);
+        }
     } else {
         // Hide notification testing panel when "No" is selected
         notificationTestingPanel.classList.add('d-none');
@@ -525,17 +570,14 @@ function setupNotificationMethodHandlers() {
         
         // Now add fresh event listeners
         document.querySelectorAll(`input[name="${name}"]`).forEach(radio => {
-            radio.addEventListener('change', handleRadioChange);
+            radio.addEventListener('change', async function() {
+                if (this.name === 'notification-method') {
+                    await handleNotificationChange();
+                }
+                updatePhoneFieldsVisibility();
+            });
         });
     };
-    
-    // Handle change events for both radio button sets
-    function handleRadioChange() {
-        if (this.name === 'notification-method') {
-            handleNotificationChange();
-        }
-        updatePhoneFieldsVisibility();
-    }
     
     // Apply to new sets of radio buttons
     replaceRadioListeners('content-delivery');
@@ -857,26 +899,8 @@ async function saveProfile(e) {
         const notificationSettings = saveProfileNotificationSettings();
         let notificationMethod = notificationSettings.notification_method;
         
-        // iOS-specific check for push notifications
-        if (notificationMethod === 'push') {
-            // If iOS but not in standalone mode, don't allow push
-            if (IS_IOS && !IS_STANDALONE) {
-                // Switch to email notifications instead
-                notificationMethod = 'none';
-                
-                // Show installation instructions
-                setTimeout(() => {
-                    showIOSInstallInstructions();
-                }, 500);
-            } else if (Notification.permission !== 'granted') {
-                // For non-iOS: If permission not granted yet, try to request it
-                const granted = await requestNotificationPermission();
-                if (!granted) {
-                    // If permission denied, switch to none
-                    notificationMethod = 'none';
-                }
-            }
-        }
+        // We don't need to check for permission here because it's already handled
+        // in handleNotificationChange() when the user selects "Yes"
         
         // Validate mobile number (currently not needed since SMS/WhatsApp are dormant)
         const mobileInput = document.getElementById('profile-mobile');
