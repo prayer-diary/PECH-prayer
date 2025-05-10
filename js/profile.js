@@ -233,11 +233,7 @@ async function handleNotificationChange() {
                     handleNotificationChange(); // Re-run to hide testing panel
                     showNotification('Permission Required', 'Notification permission was denied. You can re-enable it later in your browser settings.', 'warning');
                 }, 300);
-            } else {
-                // Permission granted successfully
-                console.log('Notification permission granted');
-                showNotification('Success', 'Notifications enabled! You\'ll now receive prayer updates.', 'success');
-            }
+            } 
         } catch (error) {
             console.error('Error requesting push permission:', error);
             // Error occurred, revert to "No"
