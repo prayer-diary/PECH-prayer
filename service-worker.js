@@ -1,7 +1,7 @@
 // Service Worker for PECH Prayer Diary PWA
 
 // Cache version - update this number to force refresh of caches
-const CACHE_VERSION = '1.1.064';
+const CACHE_VERSION = '1.1.065';
 const CACHE_NAME = `prayer-diary-cache-${CACHE_VERSION}`;
 
 // App shell files to cache initially
@@ -215,16 +215,16 @@ self.addEventListener('push', (event) => {
         // Using a unique tag with timestamp to prevent grouping and ensure delivery
         tag: `prayer-diary-${pushData.contentType || 'notification'}-${Date.now()}`,
         renotify: true,
-        actions: [
-          {
-            action: 'view',
-            title: 'View'
-          },
-          {
-            action: 'dismiss',
-            title: 'Dismiss'
-          }
-        ],
+        //actions: [
+        //  {
+        //    action: 'view',
+        //    title: 'View'
+        //  },
+        //  {
+        //    action: 'dismiss',
+        //    title: 'Dismiss'
+        //  }
+        //],
         // Critical for Android heads-up notifications - changed to max priority
         importance: 'high',
         priority: 'max',
