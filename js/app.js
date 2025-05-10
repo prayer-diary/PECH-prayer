@@ -336,9 +336,9 @@ function setupHashNavigation() {
         }
         
         // Show a toast notification for successful navigation
-        if (typeof showToast === 'function') {
-          showToast('Navigation', `Opened ${viewName} view`, 'info', 3000);
-        }
+        //if (typeof showToast === 'function') {
+        //  showToast('Navigation', `Opened ${viewName} view`, 'info', 3000);
+        //}
       } else {
         // App isn't logged in yet, retry if we haven't exceeded max retries
         retryCount++;

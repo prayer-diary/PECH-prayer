@@ -972,7 +972,7 @@ async function testPushNotification() {
       notificationParams.priority = 'high';
       notificationParams.actions = [
         {
-          action: 'view',
+          action: 'open',
           title: 'View'
         },
         {
