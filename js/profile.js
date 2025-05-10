@@ -240,7 +240,7 @@ async function sendServiceWorkerNotification(registration) {
     const testOptions = {
         body: 'This is a test notification from Prayer Diary. If you can see this, notifications are working correctly!',
         icon: '/img/icons/ios/192.png',
-        badge: '/img/icons/ios/72.png',
+        badge: '/img/icons/android/notification_icon.png',
         tag: 'test-notification',
         renotify: true,
         data: {
