@@ -445,67 +445,61 @@
                                     </div>
                                     </div>
                                     
-                                    <div class="card bg-light">
-                                    <div class="card-body">
-                                    <h6 class="card-subtitle mb-2">Notification Method</h6>
-                                    <p class="text-muted small mb-2">How would you like to be notified when new prayer updates or urgent prayer requests are available?</p>
-                                    
-									<div class="form-check">
-										<input class="form-check-input" type="radio" name="notification-method" id="notification-push" value="push">
-										<label class="form-check-label" for="notification-push">Push notification <span class="badge bg-success">All devices</span></label>
-									</div>
-									<div class="form-check">
-										<input class="form-check-input" type="radio" name="notification-method" id="notification-none" value="none" checked>
-										<label class="form-check-label" for="notification-none">No notification</label>
-									</div>
-                                        <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="notification-method" id="notification-sms" value="sms">
-                                        <label class="form-check-label" for="notification-sms">SMS text message</label>
-                                    </div>
-                                    <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="notification-method" id="notification-whatsapp" value="whatsapp">
-                                    <label class="form-check-label" for="notification-whatsapp">WhatsApp message</label>
-                                    </div>
-                                    </div>
-                                    </div>
-                                    
+										<!-- Updated Notification Method panel for My Profile section -->
+										<div class="card bg-light">
+											<div class="card-body">
+												<h6 class="card-subtitle mb-2">Notification</h6>
+												<p class="text-muted small mb-2">Do you want a notification when new prayer updates or urgent prayer requests are available?</p>
+												
+												<div class="form-check">
+													<input class="form-check-input" type="radio" name="notification-method" id="notification-yes" value="yes">
+													<label class="form-check-label" for="notification-yes">Yes, please send a notification message (You will need to enable your device to receive notifications)</label>
+												</div>
+												<div class="form-check">
+													<input class="form-check-input" type="radio" name="notification-method" id="notification-no" value="no" checked>
+													<label class="form-check-label" for="notification-no">No, I will find the messages in my email or in the app</label>
+												</div>
+											</div>
+										</div>
+																			
                                     
                                     </div>
                                     
                                     <!-- Phone Number Section (conditionally displayed) -->
-                                    <div id="phone-number-section" class="mb-3">
-                                    <div class="card bg-light">
-                                    <div class="card-body">
-                                            <h6 class="card-subtitle mb-3">Mobile Number</h6>
-                                            
-                                            <!-- Single Phone Number Field - Only shown when SMS or WhatsApp is selected -->
-                                            <div id="mobile-number-container" class="mb-3 d-none">
-                                            <label for="profile-mobile" class="form-label">Mobile Phone Number <span class="text-danger">*</span></label>
-                                                <input type="tel" class="form-control" id="profile-mobile" placeholder="E.g., 07123456789">
-                                                    <div class="form-text small">Enter your full 11-digit UK mobile number (starting with 0)</div>
-                                                    <div class="invalid-feedback">Mobile number is required for notifications</div>
-                                                </div>
-                                                
-                                            <div id="no-phone-needed-message">
-                                            <p class="text-muted small mb-0">
-                                            <i class="bi bi-info-circle me-1"></i>
-                                            Select SMS or WhatsApp notification method above to enter your mobile number.
-                                        </p>
-                                    </div>
-                                    </div>
-                                    </div>
-                                    </div>
+									<div id="phone-number-section" class="mb-3">
+										<div class="card bg-light">
+											<div class="card-body">
+												<h6 class="card-subtitle mb-3">Mobile Number</h6>
+												
+												<!-- Single Phone Number Field - Only shown when SMS or WhatsApp is selected -->
+												<div id="mobile-number-container" class="mb-3 d-none">
+													<label for="profile-mobile" class="form-label">Mobile Phone Number <span class="text-danger">*</span></label>
+													<input type="tel" class="form-control" id="profile-mobile" placeholder="E.g., 07123456789">
+													<div class="form-text small">Enter your full 11-digit UK mobile number (starting with 0)</div>
+													<div class="invalid-feedback">Mobile number is required for notifications</div>
+												</div>
+												
+												<div id="no-phone-needed-message">
+													<p class="text-muted small mb-0">
+														<i class="bi bi-info-circle me-1"></i>
+														Select SMS or WhatsApp notification method above to enter your mobile number.
+													</p>
+												</div>
+											</div>
+										</div>
+									</div>
                                     
-                                        <div class="mb-4">
-                                        <h5 class="card-title fw-bold mb-3">Notification Testing</h5>
-                                        <p class="text-muted">Test push notifications to make sure they're working on your device.</p>
-                                        <div class="d-grid gap-2">
-                                            <button type="button" class="btn btn-primary" id="test-notification-btn">
-                                                <i class="bi bi-bell me-2"></i>Send Test Notification
-                                            </button>
-                                        </div>
-                                        <div class="form-text text-muted mt-2">Click the button to send yourself a test notification. This will help confirm that notifications are properly set up on your device.</div>
-                                    </div>
+									<!-- Notification Testing panel - only shown when "Yes" is selected -->
+									<div id="notification-testing-panel" class="mb-4 d-none">
+										<h5 class="card-title fw-bold mb-3">Notification Testing</h5>
+										<p class="text-muted">Test push notifications to make sure they're working on your device.</p>
+										<div class="d-grid gap-2">
+											<button type="button" class="btn btn-primary" id="test-notification-btn">
+												<i class="bi bi-bell me-2"></i>Send Test Notification
+											</button>
+										</div>
+										<div class="form-text text-muted mt-2">Click the button to send yourself a test notification. This will help confirm that notifications are properly set up on your device.</div>
+									</div>
                                     
                                     <div class="d-grid">
                                         <button class="btn btn-primary" type="submit">

@@ -86,9 +86,8 @@ async function loadUserProfile() {
         const contentDeliveryEmail = userProfile.content_delivery_email !== false; // Default to true if undefined
         document.querySelector(`input[name="content-delivery"][value="${contentDeliveryEmail ? 'app-email' : 'app-only'}"]`).checked = true;
         
-        // Set notification method radio button based on the new notification_method field
-        let notificationMethod = userProfile.notification_method || 'none';
-        document.querySelector(`input[name="notification-method"][value="${notificationMethod}"]`).checked = true;
+        // Set notification method radio button based on the new simplified notification_method field
+        loadProfileNotificationSettings(userProfile);
         
         // Set up notification method change handlers
         setupNotificationMethodHandlers();
@@ -160,6 +159,55 @@ async function loadUserProfile() {
     } finally {
         // Reset the flag to allow future profile loads
         profileLoadInProgress = false;
+    }
+}
+
+// Update the profile loading function to handle the new notification structure
+function loadProfileNotificationSettings(profile) {
+    // Set the notification radio buttons based on the saved preference
+    // Map old values to new simplified options
+    if (profile.notification_method === 'push' || profile.notification_method === 'sms' || profile.notification_method === 'whatsapp') {
+        document.getElementById('notification-yes').checked = true;
+        document.getElementById('notification-no').checked = false;
+    } else {
+        document.getElementById('notification-yes').checked = false;
+        document.getElementById('notification-no').checked = true;
+    }
+    
+    // Trigger the change event to show/hide appropriate panels
+    handleNotificationChange();
+}
+
+// Update the profile saving function to handle the new notification structure
+function saveProfileNotificationSettings() {
+    const notificationYes = document.getElementById('notification-yes').checked;
+    
+    // Map the simplified options to the existing database structure
+    // For now, if they select "Yes", we default to push notifications
+    const notificationMethod = notificationYes ? 'push' : 'none';
+    
+    return {
+        notification_method: notificationMethod,
+        // Keep other notification fields for future use
+        notification_push: notificationYes
+    };
+}
+
+// Event listeners for notification radio buttons
+function handleNotificationChange() {
+    const notificationYes = document.getElementById('notification-yes');
+    const notificationTestingPanel = document.getElementById('notification-testing-panel');
+    
+    if (notificationYes && notificationYes.checked) {
+        // Show notification testing panel when "Yes" is selected
+        notificationTestingPanel.classList.remove('d-none');
+        // Keep phone number section hidden for now (SMS/WhatsApp are dormant)
+        document.getElementById('phone-number-section').classList.add('d-none');
+    } else {
+        // Hide notification testing panel when "No" is selected
+        notificationTestingPanel.classList.add('d-none');
+        // Hide phone number section completely
+        document.getElementById('phone-number-section').classList.add('d-none');
     }
 }
 
@@ -477,66 +525,21 @@ function setupNotificationMethodHandlers() {
         
         // Now add fresh event listeners
         document.querySelectorAll(`input[name="${name}"]`).forEach(radio => {
-            radio.addEventListener('change', updatePhoneFieldsVisibility);
+            radio.addEventListener('change', handleRadioChange);
         });
     };
     
+    // Handle change events for both radio button sets
+    function handleRadioChange() {
+        if (this.name === 'notification-method') {
+            handleNotificationChange();
+        }
+        updatePhoneFieldsVisibility();
+    }
+    
     // Apply to new sets of radio buttons
     replaceRadioListeners('content-delivery');
-    
-    // For notification method, we need special handling for push notifications
-    const notificationRadios = document.querySelectorAll('input[name="notification-method"]');
-    notificationRadios.forEach(radio => {
-        const newRadio = radio.cloneNode(true);
-        radio.parentNode.replaceChild(newRadio, radio);
-        
-        // Add change event listener
-        newRadio.addEventListener('change', function() {
-            // First update the phone fields visibility
-            updatePhoneFieldsVisibility();
-            
-            // Then handle push notification permissions if push is selected
-            if (this.value === 'push') {
-                // iOS-specific check
-                if (IS_IOS && !IS_STANDALONE) {
-                    // Show iOS installation requirement
-                    if (typeof showIOSInstallInstructions === 'function') {
-                        showIOSInstallInstructions();
-                    } else {
-                        // Fallback if the function doesn't exist
-                        showNotification(
-                            'Installation Required', 
-                            'On iOS, you need to install this app to your home screen before enabling push notifications.',
-                            'warning'
-                        );
-                    }
-                    
-                    // Revert to the previous selection
-                    const originalMethod = userProfile.notification_method || 'none';
-                    document.querySelector(`input[name="notification-method"][value="${originalMethod}"]`).checked = true;
-                    updatePhoneFieldsVisibility();
-                    return;
-                }
-                
-                // Request push permissions on all other device types
-                requestNotificationPermission().then(result => {
-                    if (!result) {
-                        // If permission failed, revert to 'none'
-                        document.getElementById('notification-none').checked = true;
-                        updatePhoneFieldsVisibility();
-                        showNotification('Permission Required', 'Push notification permission was denied.', 'error');
-                    } else {
-                        // Update user profile with push notification method
-                        updateUserNotificationMethodToPush();
-                    }
-                }).catch(error => {
-                    console.error('Error requesting push permission:', error);
-                    document.getElementById('notification-none').checked = true;
-                    updatePhoneFieldsVisibility();
-                });
-            }
-        });
-    });
+    replaceRadioListeners('notification-method');
     
     // Setup real-time validation for the single mobile number field
     const mobileInput = document.getElementById('profile-mobile');
@@ -673,62 +676,18 @@ function disableHiddenRequiredFields() {
 
 // Update phone fields visibility based on notification method selections
 function updatePhoneFieldsVisibility() {
-    // Get selected notification method (with null check)
-    const notificationMethodRadio = document.querySelector('input[name="notification-method"]:checked');
-    
-    if (!notificationMethodRadio) {
-        console.warn('Radio buttons for notification method not found');
-        return; // Exit if elements don't exist
-    }
-    
-    const notificationMethod = notificationMethodRadio.value;
-    
-    // Get container elements (with null checks)
+    // Hide phone fields for now since SMS/WhatsApp are dormant
     const phoneNumberSection = document.getElementById('phone-number-section');
-    const mobileNumberContainer = document.getElementById('mobile-number-container');
-    const noPhoneMessage = document.getElementById('no-phone-needed-message');
     
-    // Exit if any required container is missing
-    if (!phoneNumberSection) {
-        console.warn('phone-number-section element not found');
-        return;
-    }
-    
-    // Check if mobile number is needed (SMS or WhatsApp selected)
-    const mobileNeeded = (notificationMethod === 'sms' || notificationMethod === 'whatsapp');
-    
-    // Show/hide the entire phone number section as needed
-    if (!mobileNeeded) {
+    if (phoneNumberSection) {
         phoneNumberSection.classList.add('d-none');
-        // Make sure to remove required from field when hiding the section
-        const mobileInput = document.getElementById('profile-mobile');
-        if (mobileInput) mobileInput.removeAttribute('required');
-        return; // Exit early since the whole section is hidden
-    } else {
-        phoneNumberSection.classList.remove('d-none');
     }
     
-    // Update visibility of mobile number container
+    // Always remove required attribute from mobile number when using simplified notifications
     const mobileInput = document.getElementById('profile-mobile');
-    if (mobileNeeded && mobileNumberContainer) {
-        mobileNumberContainer.classList.remove('d-none');
-        if (mobileInput) mobileInput.setAttribute('required', '');
-    } else if (mobileNumberContainer) {
-        mobileNumberContainer.classList.add('d-none');
-        if (mobileInput) {
-            mobileInput.removeAttribute('required');
-            // Clear validation state when hiding
-            mobileInput.classList.remove('is-invalid');
-        }
-    }
-    
-    // Show/hide the "no phone needed" message
-    if (noPhoneMessage) {
-        if (mobileNeeded) {
-            noPhoneMessage.classList.add('d-none');
-        } else {
-            noPhoneMessage.classList.remove('d-none');
-        }
+    if (mobileInput) {
+        mobileInput.removeAttribute('required');
+        mobileInput.classList.remove('is-invalid');
     }
     
     // Run this directly after changing visibility
@@ -894,8 +853,9 @@ async function saveProfile(e) {
         // Determine if email should be used based on the selection
         const contentDeliveryEmail = contentDelivery === 'app-email';
         
-        // Get the notification method
-        let notificationMethod = document.querySelector('input[name="notification-method"]:checked').value;
+        // Get the notification method using the new simplified method
+        const notificationSettings = saveProfileNotificationSettings();
+        let notificationMethod = notificationSettings.notification_method;
         
         // iOS-specific check for push notifications
         if (notificationMethod === 'push') {
@@ -918,20 +878,9 @@ async function saveProfile(e) {
             }
         }
         
-        // Check if phone number is required but missing
+        // Validate mobile number (currently not needed since SMS/WhatsApp are dormant)
         const mobileInput = document.getElementById('profile-mobile');
-        
-        // Clear previous validation state
         if (mobileInput) mobileInput.classList.remove('is-invalid');
-        
-        // Check mobile number requirement
-        const mobileNeeded = (notificationMethod === 'sms' || notificationMethod === 'whatsapp');
-        if (mobileNeeded && !mobileNumber) {
-            mobileInput.classList.add('is-invalid');
-            submitBtn.textContent = originalText;
-            submitBtn.disabled = false;
-            return; // Stop form submission
-        }
         
         // Prepare profile data object
         const profileData = {
@@ -1102,31 +1051,6 @@ async function updateProfileViaEdgeFunction(data) {
         
         // Show a success notification
         showNotification('Success', 'Profile saved successfully!');
-        
-        // UNIVERSAL REFRESH: Apply to all devices (no iOS check)
-        console.log('📱 Applying universal page refresh after profile update');
-        
-        // Show a notification about the refresh
-		/*
-        setTimeout(() => {
-            showNotification('Refreshing', 'Updating app to apply changes...', 'info');
-            
-            // Store a marker in sessionStorage to indicate we're coming back from a refresh
-            // This allows us to restore state or show a message
-            sessionStorage.setItem('profileSaved', 'true');
-            
-            // Save current view to restore after refresh
-            const currentView = document.querySelector('.view-content:not(.d-none)')?.id || '';
-            if (currentView) {
-                sessionStorage.setItem('lastView', currentView);
-            }
-            
-            // Give time for the notification to be seen, then refresh
-            setTimeout(() => {
-                window.location.reload();
-            }, 1500);
-        }, 1000);
-		*/
         
     } catch (error) {
         console.error('❌ Error in updateProfileViaEdgeFunction:', error);
