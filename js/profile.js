@@ -179,78 +179,112 @@ function setupTestNotificationButton() {
     }
 }
 
-// Send a test notification
-async function sendTestNotification() {
-    const btn = document.getElementById('test-notification-btn');
-    const originalHtml = btn.innerHTML;
+// FIXED TEST NOTIFICATION FUNCTION - Now uses service worker properly
+document.getElementById('test-notification-btn')?.addEventListener('click', async function() {
+    console.log('[Profile] Test notification button clicked');
     
-    // Show loading state
-    btn.disabled = true;
-    btn.innerHTML = '<i class="bi bi-spinner spinners-border spinner-border-sm me-2"></i>Sending...';
+    // Check if notifications are supported
+    if (!('Notification' in window)) {
+        DebugPanel.error('This browser does not support notifications', {type: 'Notification API'});
+        return;
+    }
     
-    try {
-        // Check if we have permission
-        if (Notification.permission !== 'granted') {
-            showNotification('Error', 'Notification permission not granted. Please enable notifications first.', 'error');
+    // Try to get the active service worker registration
+    const registrationPromise = navigator.serviceWorker.getRegistration('/');
+    
+    registrationPromise.then((registration) => {
+        if (!registration) {
+            console.error('No service worker registration found');
+            DebugPanel.error('Service worker not registered', {type: 'Service Worker'});
             return;
         }
         
-        // Try using the service worker if available
-        if ('serviceWorker' in navigator) {
-            try {
-                const registration = await navigator.serviceWorker.getRegistration();
-                if (registration && registration.pushManager) {
-                    // We have a service worker, use it to send a test notification
-                    const notification = new Notification('Prayer Diary Test', {
-                        body: 'This is a test notification from Prayer Diary. Your notifications are working correctly!',
-                        icon: 'img/icons/ios/180.png',
-                        badge: 'img/icons/ios/60.png'
-                    });
-                    
-                    notification.onclick = function() {
-                        window.focus();
-                        notification.close();
-                    };
-                    
-                    showNotification('Success', 'Test notification sent successfully!', 'success');
-                } else {
-                    // Fallback to regular notification
-                    sendRegularNotification();
-                }
-            } catch (swError) {
-                console.error('Service worker error:', swError);
-                // Fallback to regular notification
-                sendRegularNotification();
+        // Check permission state
+        Notification.requestPermission().then((permission) => {
+            if (permission === 'granted') {
+                // Send test notification using service worker
+                sendServiceWorkerNotification(registration);
+            } else {
+                DebugPanel.error('Notification permission denied', {type: 'Permission'});
             }
-        } else {
-            // No service worker support, use regular notification
-            sendRegularNotification();
+        });
+    }).catch((error) => {
+        console.error('Error getting service worker registration:', error);
+        DebugPanel.error('Service worker registration error', {type: 'Service Worker', error: error.message});
+    });
+});
+
+// New function to send test notification via service worker
+function sendServiceWorkerNotification(registration) {
+    if (!registration || !registration.showNotification) {
+        console.error('Service worker registration not available or showNotification not supported');
+        DebugPanel.error('Cannot send notification: Service worker not available', {type: 'Service Worker'});
+        return Promise.reject(new Error('Service Worker not available'));
+    }
+    
+    const testTitle = 'Prayer Diary Test';
+    const testOptions = {
+        body: 'This is a test notification from Prayer Diary.',
+        icon: '/img/icons/ios/192.png',
+        badge: '/img/icons/ios/72.png',
+        tag: 'test-notification',
+        renotify: true,
+        data: {
+            testNotification: true,
+            timestamp: Date.now()
         }
-        
-    } catch (error) {
-        console.error('Error sending test notification:', error);
-        showNotification('Error', `Failed to send test notification: ${error.message}`, 'error');
-    } finally {
-        // Reset button state
-        btn.disabled = false;
-        btn.innerHTML = originalHtml;
+    };
+    
+    console.log('[Profile] Sending test notification via service worker');
+    
+    return registration.showNotification(testTitle, testOptions)
+        .then(() => {
+            console.log('[Profile] Test notification sent successfully');
+            DebugPanel.log('Test notification sent successfully', {type: 'Success'});
+        })
+        .catch((error) => {
+            console.error('[Profile] Error sending test notification:', error);
+            DebugPanel.error('Failed to send test notification', {type: 'Error', error: error.message});
+        });
+}
+
+// Optional: Add a function to check notification permission status
+async function checkNotificationPermission() {
+    if (!('Notification' in window)) {
+        return 'not-supported';
+    }
+    
+    if ('permission' in Notification) {
+        return Notification.permission;
+    }
+    
+    return 'unknown';
+}
+
+// Call this to initialize and check permission status when profile loads
+async function initializeNotificationStatus() {
+    const permissionStatus = await checkNotificationPermission();
+    console.log('[Profile] Notification permission status:', permissionStatus);
+    
+    // Update UI based on permission status if needed
+    const testBtn = document.getElementById('test-notification-btn');
+    if (testBtn) {
+        if (permissionStatus === 'not-supported') {
+            testBtn.disabled = true;
+            testBtn.innerHTML = '<i class="bi bi-bell-slash me-2"></i>Notifications Not Supported';
+        } else if (permissionStatus === 'denied') {
+            testBtn.innerHTML = '<i class="bi bi-bell-slash me-2"></i>Enable Notifications in Browser';
+        }
     }
 }
 
-// Send a regular notification (without service worker)
-function sendRegularNotification() {
-    const notification = new Notification('Prayer Diary Test', {
-        body: 'This is a test notification from Prayer Diary. Your notifications are working correctly!',
-        icon: 'img/icons/ios/180.png'
-    });
-    
-    notification.onclick = function() {
-        window.focus();
-        notification.close();
-    };
-    
-    showNotification('Success', 'Test notification sent successfully!', 'success');
-}
+// Initialize when the profile view is shown
+document.addEventListener('DOMContentLoaded', initializeNotificationStatus);
+
+// Also initialize when the profile view becomes visible
+document.getElementById('profile-view')?.addEventListener('viewshown', initializeNotificationStatus);
+
+// REMOVED THE OLD SENDTESTNOTIFICATION FUNCTION ENTIRELY
 
 // Update the profile loading function to handle the new notification structure
 function loadProfileNotificationSettings(profile) {
@@ -863,7 +897,7 @@ function updateCalendarHideVisibility() {
     const calendarHideCheckbox = document.getElementById('profile-calendar-hide');
     const prayerPointsSection = document.getElementById('profile-prayer-points').closest('.mb-3');
     // Find the card with the title "Your Prayer Card"
-    const previewCardSection = document.querySelector('.col-md-8 .card.shadow');
+    const previewCardSection = document.querySelector('.col-md-6 .card.shadow');
     
     if (calendarHideCheckbox && calendarHideCheckbox.checked) {
         // Hide prayer points and preview if checkbox is checked
