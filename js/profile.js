@@ -326,7 +326,7 @@ async function handleNotificationChange() {
             } else {
                 // Permission granted successfully
                 console.log('Notification permission granted');
-                showNotification('Success', 'Notifications enabled! You\'ll now receive prayer updates.', 'success');
+                //showNotification('Success', 'Notifications enabled! You\'ll now receive prayer updates.', 'success');
                 
                 // Make sure test notification button is set up
                 setupTestNotificationButton();
