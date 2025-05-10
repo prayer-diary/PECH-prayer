@@ -192,10 +192,10 @@ serve(async (req) => {
               // Unique tag with timestamp for each notification
               tag: `prayer-diary-${contentType || 'notification'}-${Date.now()}`,
               renotify: true,
-              actions: [
-                { action: 'view', title: 'View' },
-                { action: 'dismiss', title: 'Dismiss' }
-              ],
+              //actions: [
+              //  { action: 'open', title: 'View' },
+              //  { action: 'dismiss', title: 'Dismiss' }
+              //],
               // Android needs more detailed messages
               body: message || `New ${contentType || 'prayer'} notification. Tap to view details.`,
               // Ensure timestamp is present for proper ordering

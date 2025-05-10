@@ -970,7 +970,7 @@ async function testPushNotification() {
     // Add Android-specific parameters
     if (window.PUSH_NOTIFICATION.IS_ANDROID) {
       notificationParams.priority = 'high';
-      notificationParams.actions = [
+  /*    notificationParams.actions = [  // Testing missing this out to get better operation on android
         {
           action: 'open',
           title: 'View'
@@ -980,6 +980,8 @@ async function testPushNotification() {
           title: 'Dismiss'
         }
       ];
+	  
+  */
       // Android requires more descriptive messages
       notificationParams.message = `This is a test ${testContentType.replace('_', ' ')} notification. Tap to open the ${testContentType === 'prayer_update' ? 'Prayer Updates' : 'Urgent Prayers'} page.`;
     }
