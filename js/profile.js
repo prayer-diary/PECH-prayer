@@ -150,12 +150,6 @@ async function loadUserProfile() {
         // Add change handler for photo tag to update preview
         document.getElementById('profile-photo-tag').addEventListener('input', updateProfilePreview);
         
-        // Initialize notification section with iOS-specific warnings if needed
-        initProfileNotifications();
-        
-        // Set up test notification button
-        setupTestNotificationButton();
-        
     } catch (error) {
         console.error('Error loading profile:', error);
         showNotification('Error', `Unable to load your profile: ${error.message}`);
@@ -163,147 +157,6 @@ async function loadUserProfile() {
         // Reset the flag to allow future profile loads
         profileLoadInProgress = false;
     }
-}
-
-// Set up the test notification button handler
-function setupTestNotificationButton() {
-    const testNotificationBtn = document.getElementById('test-notification-btn');
-    
-    if (testNotificationBtn) {
-        // Remove any existing listeners first
-        const newBtn = testNotificationBtn.cloneNode(true);
-        testNotificationBtn.parentNode.replaceChild(newBtn, testNotificationBtn);
-        
-        // Add new event listener
-        newBtn.addEventListener('click', sendTestNotification);
-    }
-}
-
-// Send a test notification - FIXED VERSION USING SERVICE WORKER
-async function sendTestNotification() {
-    console.log('[Profile] Test notification button clicked');
-    
-    // Check if notifications are supported
-    if (!('Notification' in window)) {
-        if (typeof DebugPanel !== 'undefined') {
-            DebugPanel.error('This browser does not support notifications', {type: 'Notification API'});
-        }
-        showNotification('Error', 'This browser does not support notifications');
-        return;
-    }
-    
-    try {
-        // Try to get the active service worker registration
-        const registration = await navigator.serviceWorker.getRegistration('/');
-        
-        if (!registration) {
-            console.error('No service worker registration found');
-            if (typeof DebugPanel !== 'undefined') {
-                DebugPanel.error('Service worker not registered', {type: 'Service Worker'});
-            }
-            showNotification('Error', 'Service worker not registered. Notifications may not work properly.');
-            return;
-        }
-        
-        // Check permission state
-        const permission = await Notification.requestPermission();
-        
-        if (permission === 'granted') {
-            // Send test notification using service worker
-            await sendServiceWorkerNotification(registration);
-        } else {
-            if (typeof DebugPanel !== 'undefined') {
-                DebugPanel.error('Notification permission denied', {type: 'Permission'});
-            }
-            showNotification('Error', 'Notification permission is required to show notifications.');
-        }
-    } catch (error) {
-        console.error('Error sending test notification:', error);
-        if (typeof DebugPanel !== 'undefined') {
-            DebugPanel.error('Test notification error', {type: 'Error', error: error.message});
-        }
-        showNotification('Error', `Failed to send test notification: ${error.message}`);
-    }
-}
-
-// New function to send test notification via service worker
-async function sendServiceWorkerNotification(registration) {
-    if (!registration || !registration.showNotification) {
-        console.error('Service worker registration not available or showNotification not supported');
-        if (typeof DebugPanel !== 'undefined') {
-            DebugPanel.error('Cannot send notification: Service worker not available', {type: 'Service Worker'});
-        }
-        return Promise.reject(new Error('Service Worker not available'));
-    }
-    
-    const testTitle = 'Prayer Diary Test';
-    const testOptions = {
-        body: 'This is a test notification from Prayer Diary. If you can see this, notifications are working correctly!',
-        icon: '/img/icons/ios/192.png',
-        badge: '/img/icons/android/notification_icon.png',
-        tag: 'test-notification',
-        renotify: true,
-        data: {
-            testNotification: true,
-            timestamp: Date.now()
-        }
-    };
-    
-    console.log('[Profile] Sending test notification via service worker');
-    
-    try {
-        await registration.showNotification(testTitle, testOptions);
-        console.log('[Profile] Test notification sent successfully');
-        if (typeof DebugPanel !== 'undefined') {
-            DebugPanel.log('Test notification sent successfully', {type: 'Success'});
-        }
-        showNotification('Success', 'Test notification sent! You should see it now.');
-    } catch (error) {
-        console.error('[Profile] Error sending test notification:', error);
-        if (typeof DebugPanel !== 'undefined') {
-            DebugPanel.error('Failed to send test notification', {type: 'Error', error: error.message});
-        }
-        throw error;
-    }
-}
-
-// Optional: Add a function to check notification permission status
-async function checkNotificationPermission() {
-    if (!('Notification' in window)) {
-        return 'not-supported';
-    }
-    
-    if ('permission' in Notification) {
-        return Notification.permission;
-    }
-    
-    return 'unknown';
-}
-
-// Call this to initialize and check permission status when profile loads
-async function initializeNotificationStatus() {
-    const permissionStatus = await checkNotificationPermission();
-    console.log('[Profile] Notification permission status:', permissionStatus);
-    
-    // Update UI based on permission status if needed
-    const testBtn = document.getElementById('test-notification-btn');
-    if (testBtn) {
-        if (permissionStatus === 'not-supported') {
-            testBtn.disabled = true;
-            testBtn.innerHTML = '<i class="bi bi-bell-slash me-2"></i>Notifications Not Supported';
-        } else if (permissionStatus === 'denied') {
-            testBtn.innerHTML = '<i class="bi bi-bell-slash me-2"></i>Enable Notifications in Browser';
-        }
-    }
-}
-
-// Initialize when the profile view is shown
-document.addEventListener('DOMContentLoaded', initializeNotificationStatus);
-
-// Also initialize when the profile view becomes visible
-const profileView = document.getElementById('profile-view');
-if (profileView) {
-    profileView.addEventListener('viewshown', initializeNotificationStatus);
 }
 
 // Update the profile loading function to handle the new notification structure
@@ -341,63 +194,12 @@ function saveProfileNotificationSettings() {
 async function handleNotificationChange() {
     const notificationYes = document.getElementById('notification-yes');
     const notificationNo = document.getElementById('notification-no');
-    const notificationTestingPanel = document.getElementById('notification-testing-panel');
     
     if (notificationYes && notificationYes.checked) {
-        // Show notification testing panel when "Yes" is selected
-        notificationTestingPanel.classList.remove('d-none');
-        // Keep phone number section hidden for now (SMS/WhatsApp are dormant)
+        // Hide phone number section (SMS/WhatsApp are dormant)
         document.getElementById('phone-number-section').classList.add('d-none');
-        
-        // Immediately request notification permission
-        console.log('User selected "Yes" for notifications, requesting permission...');
-        
-        // Check for iOS non-standalone first
-        if (IS_IOS && !IS_STANDALONE) {
-            // Show iOS installation requirement
-            setTimeout(() => {
-                showIOSInstallInstructions();
-                // Revert to "No" selection
-                notificationYes.checked = false;
-                notificationNo.checked = true;
-                handleNotificationChange(); // Re-run to hide testing panel
-            }, 300);
-            return;
-        }
-        
-        // Request notification permission immediately
-        try {
-            const granted = await requestNotificationPermission();
-            
-            if (!granted) {
-                // Permission was denied, revert to "No"
-                setTimeout(() => {
-                    notificationYes.checked = false;
-                    notificationNo.checked = true;
-                    handleNotificationChange(); // Re-run to hide testing panel
-                    showNotification('Permission Required', 'Notification permission was denied. You can re-enable it later in your browser settings.', 'warning');
-                }, 300);
-            } else {
-                // Permission granted successfully
-                console.log('Notification permission granted');
-                //showNotification('Success', 'Notifications enabled! You\'ll now receive prayer updates.', 'success');
-                
-                // Make sure test notification button is set up
-                setupTestNotificationButton();
-            }
-        } catch (error) {
-            console.error('Error requesting push permission:', error);
-            // Error occurred, revert to "No"
-            setTimeout(() => {
-                notificationYes.checked = false;
-                notificationNo.checked = true;
-                handleNotificationChange(); // Re-run to hide testing panel
-                showNotification('Error', 'Unable to enable notifications. Please try again later.', 'error');
-            }, 300);
-        }
     } else {
         // Hide notification testing panel when "No" is selected
-        notificationTestingPanel.classList.add('d-none');
         // Hide phone number section completely
         document.getElementById('phone-number-section').classList.add('d-none');
     }
@@ -761,75 +563,6 @@ function setupNotificationMethodHandlers() {
     }
 }
 
-// Initialize notification section with iOS-specific warnings
-function initProfileNotifications() {
-    // Show warning for iOS users if they haven't installed the app
-    if (IS_IOS && !IS_STANDALONE) {
-        // Add a warning banner to the notification section
-        const notificationSection = document.querySelector('.notification-method, form fieldset:contains("Notification Method")');
-        if (notificationSection) {
-            const warningBanner = document.createElement('div');
-            warningBanner.className = 'alert alert-warning mt-2';
-            warningBanner.innerHTML = `
-                <small><i class="bi bi-info-circle me-1"></i> 
-                Note: On iOS devices, push notifications require installing this app to your home screen first.</small>
-            `;
-            notificationSection.appendChild(warningBanner);
-            
-            // Disable the push notification option for iOS non-standalone
-            const pushRadio = document.getElementById('notification-push');
-            if (pushRadio) {
-                const pushLabel = pushRadio.closest('label') || pushRadio.parentElement;
-                pushRadio.disabled = true;
-                if (pushLabel) {
-                    pushLabel.style.opacity = '0.5';
-                    // Add help text next to the radio button
-                    const helpText = document.createElement('span');
-                    helpText.className = 'ms-2 text-muted small';
-                    helpText.innerHTML = '(Install app first)';
-                    pushLabel.appendChild(helpText);
-                }
-            }
-        }
-    }
-}
-
-// Helper function to show iOS installation instructions
-function showIOSInstallInstructions() {
-    const content = `
-        <p>Push notifications on iOS require the app to be installed to your home screen first.</p>
-        <h6 class="mt-3 mb-2">To install this app:</h6>
-        <ol>
-            <li>Tap the <strong>Share</strong> button in Safari's toolbar</li>
-            <li>Scroll down and tap <strong>Add to Home Screen</strong></li>
-            <li>Confirm by tapping <strong>Add</strong></li>
-            <li>Launch the app from your home screen</li>
-            <li>Then try enabling notifications again</li>
-        </ol>
-        <p class="mt-3 small text-muted">Apple requires web apps to be installed before they can request notification permissions.</p>
-    `;
-    
-    showNotification('Installation Required', content);
-}
-
-// Helper function to show iOS notification help
-function showIOSNotificationHelp() {
-    const content = `
-        <p>Notification permissions are currently blocked for this app on your iOS device.</p>
-        <h6 class="mt-3 mb-2">To enable notifications:</h6>
-        <ol>
-            <li>Open the <strong>Settings</strong> app on your iPhone or iPad</li>
-            <li>Scroll down and find <strong>Safari</strong></li>
-            <li>Tap on <strong>Advanced</strong> → <strong>Website Data</strong></li>
-            <li>Find and remove data for this website</li>
-            <li>Return to the app and try again</li>
-        </ol>
-        <p class="mt-2"><strong>Note:</strong> iOS has limited support for web notifications, even in installed PWAs.</p>
-    `;
-    
-    showNotification('iOS Notifications', content);
-}
-
 // Helper function to ensure no hidden fields have required attribute
 function disableHiddenRequiredFields() {
     // Get all required inputs
@@ -1046,9 +779,6 @@ async function saveProfile(e) {
         const notificationSettings = saveProfileNotificationSettings();
         let notificationMethod = notificationSettings.notification_method;
         
-        // We don't need to check for permission here because it's already handled
-        // in handleNotificationChange() when the user selects "Yes"
-        
         // Validate mobile number (currently not needed since SMS/WhatsApp are dormant)
         const mobileInput = document.getElementById('profile-mobile');
         if (mobileInput) mobileInput.classList.remove('is-invalid');
@@ -1237,17 +967,6 @@ async function updateProfileViaEdgeFunction(data) {
     }
 }
 
-// Helper function to update notification method to push
-async function updateUserNotificationMethodToPush() {
-    // This function is called when push notification permission is granted
-    console.log('User granted push notification permission, updating profile');
-    
-    // We don't need to do anything here as the profile will be saved with the new method
-    // when the user clicks Save Profile
-    
-    // We could automatically save the profile here, but it's better to let the user control that
-}
-
 // Helper function to get auth token
 async function getAuthToken() {
     await window.waitForAuthStability();
@@ -1269,15 +988,3 @@ function fileToBase64(file) {
         reader.readAsDataURL(file);
     });
 }
-
-// Add this to ensure notification handlers are initialized when the profile view is shown
-document.addEventListener('DOMContentLoaded', function() {
-    // Handle notification section when profile view is shown
-    const profileNavLink = document.getElementById('nav-profile');
-    if (profileNavLink) {
-        profileNavLink.addEventListener('click', function() {
-            // Wait for profile to load then initialize notifications
-            setTimeout(initProfileNotifications, 500);
-        });
-    }
-});
