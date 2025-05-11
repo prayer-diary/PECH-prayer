@@ -5,14 +5,31 @@
 window.PUSH_NOTIFICATION = window.PUSH_NOTIFICATION || {};
 window.PUSH_NOTIFICATION.PERMISSION_PROMPT_KEY = 'pushNotificationPermissionPromptShown';
 window.PUSH_NOTIFICATION.PERMISSION_PROMPT_DELAY = 3000; // 3 seconds
-window.PUSH_NOTIFICATION.IS_ANDROID = /Android/.test(navigator.userAgent);
-window.PUSH_NOTIFICATION.IS_IOS = /AppleWebKit|iPad|iPhone|iPod/.test(navigator.userAgent) ;
 
-if (window.PUSH_NOTIFICATION.IS_IOS) {
-	if (navigator.maxTouchPoints < 1) {
-		window.PUSH_NOTIFICATION.IS_IOS = false;  //Probably MacOs
-	}
-} ;
+// Improved device detection
+// Check Android first since Android browsers also contain "AppleWebKit"
+window.PUSH_NOTIFICATION.IS_ANDROID = /Android/.test(navigator.userAgent);
+
+// Only check for iOS if it's NOT Android
+window.PUSH_NOTIFICATION.IS_IOS = !window.PUSH_NOTIFICATION.IS_ANDROID && 
+    (/iPad|iPhone|iPod/.test(navigator.userAgent) || 
+    (navigator.maxTouchPoints && navigator.maxTouchPoints > 1 && /Safari/.test(navigator.userAgent)));
+
+// Additional check for iOS that might be running Chrome or other non-Safari browsers
+if (!window.PUSH_NOTIFICATION.IS_ANDROID && !window.PUSH_NOTIFICATION.IS_IOS) {
+    // Check if it's iOS with a different browser
+    window.PUSH_NOTIFICATION.IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
+        (navigator.platform === 'iPad' || navigator.platform === 'iPhone' || navigator.platform === 'iPod');
+}
+
+// Log the detection results for debugging
+console.log('Device Detection:', {
+    userAgent: navigator.userAgent,
+    platform: navigator.platform,
+    isAndroid: window.PUSH_NOTIFICATION.IS_ANDROID,
+    isIOS: window.PUSH_NOTIFICATION.IS_IOS,
+    maxTouchPoints: navigator.maxTouchPoints
+});
 
 // Variable to track if initialization has been done
 let pushInitialized = false;
@@ -79,19 +96,24 @@ window.isInStandaloneMode = function isInStandaloneMode() {
   return displayModeStandalone || navigatorStandalone || androidApp || installedFlag;
 }
 
-// Advanced device debug logging
+// Advanced device debug logging function
 function logDeviceDebugInfo() {
   // Create a comprehensive device and environment report
   const debugInfo = {
     device: {
       userAgent: navigator.userAgent,
       platform: navigator.platform,
-      isIOS: window.PUSH_NOTIFICATION.IS_IOS,
+      vendor: navigator.vendor,
+      appName: navigator.appName,
+      appVersion: navigator.appVersion,
       isAndroid: window.PUSH_NOTIFICATION.IS_ANDROID,
+      isIOS: window.PUSH_NOTIFICATION.IS_IOS,
       standalone: window.navigator.standalone,
       displayModeStandalone: window.matchMedia('(display-mode: standalone)').matches,
       installedFlag: localStorage.getItem('prayerDiaryInstalled') === 'true',
-      language: navigator.language
+      language: navigator.language,
+      maxTouchPoints: navigator.maxTouchPoints,
+      cookieEnabled: navigator.cookieEnabled
     },
     features: {
       serviceWorkerSupported: 'serviceWorker' in navigator,
@@ -102,32 +124,59 @@ function logDeviceDebugInfo() {
     app: {
       version: window.PRAYER_DIARY ? window.PRAYER_DIARY.version : 'unknown',
       devMode: window.PRAYER_DIARY ? window.PRAYER_DIARY.devMode : false
+    },
+    screen: {
+      width: window.screen.width,
+      height: window.screen.height,
+      availWidth: window.screen.availWidth,
+      availHeight: window.screen.availHeight,
+      pixelRatio: window.devicePixelRatio
     }
   };
   
-  // Add iOS-specific information if on iOS
+  // Add iOS-specific information if detected as iOS
   if (window.PUSH_NOTIFICATION.IS_IOS) {
     const iosVersion = getIOSVersion();
     debugInfo.ios = {
       version: iosVersion ? `${iosVersion.major}.${iosVersion.minor}.${iosVersion.patch}` : 'Unknown',
       isVersionSupported: isIOSVersionSupported(),
-      isStandalone: isIOSStandalone()
+      isStandalone: isIOSStandalone(),
+      webkit: 'webkit' in window
     };
   }
   
-  // Add Android-specific information if on Android
+  // Add Android-specific information if detected as Android
   if (window.PUSH_NOTIFICATION.IS_ANDROID) {
     // Extract Android version
     const match = navigator.userAgent.match(/Android (\d+)\.(\d+)\.?(\d+)?/);
     debugInfo.android = {
       version: match ? `${match[1]}.${match[2]}.${match[3] || 0}` : 'Unknown',
-      manufacturer: getAndroidManufacturer()
+      manufacturer: getAndroidManufacturer(),
+      chrome: navigator.userAgent.includes('Chrome'),
+      chromeVersion: navigator.userAgent.match(/Chrome\/(\d+\.\d+)/)?.[1] || 'Unknown'
     };
   }
   
-  console.log('Device Debug Information:', debugInfo);
+  console.log('=== Device Debug Information ===');
+  console.log(JSON.stringify(debugInfo, null, 2));
+  console.log('===============================');
+  
+  // Show a notification with key device info
+  if (typeof showNotification === 'function') {
+    showNotification('Device Debug Info', 
+      `Device: ${debugInfo.device.isAndroid ? 'Android' : debugInfo.device.isIOS ? 'iOS' : 'Other'}<br>
+       Browser: ${navigator.userAgent.match(/Chrome|Firefox|Safari|Edge|Samsung|Opera/)?.[0] || 'Unknown'}<br>
+       Push Supported: ${debugInfo.features.pushManagerSupported ? 'Yes' : 'No'}<br>
+       Permission: ${debugInfo.features.notificationPermission}`, 
+      'info', 
+      10000);
+  }
+  
   return debugInfo;
 }
+
+// Export the debug function for manual testing
+window.debugDeviceInfo = logDeviceDebugInfo;
 
 // Get Android manufacturer from user agent
 function getAndroidManufacturer() {
