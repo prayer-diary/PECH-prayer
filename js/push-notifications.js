@@ -10,7 +10,7 @@ window.PUSH_NOTIFICATION.IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ;
 window.PUSH_NOTIFICATION.IS_ANDROID = /Android/.test(navigator.userAgent);
 if (window.PUSH_NOTIFICATION.IS_IOS) {
 	showToast('IOS IS SET', 'IOS SET', 'success', 10000);
-	} else{ showToast('IOS NOT SET', 'IOS NOT SET', 'success', 10000)
+	} else{ showToast('IOS NOT SET', navigator.userAgent, 'success', 10000)
 	}
 
 // Variable to track if initialization has been done
