@@ -5,12 +5,12 @@
 window.PUSH_NOTIFICATION = window.PUSH_NOTIFICATION || {};
 window.PUSH_NOTIFICATION.PERMISSION_PROMPT_KEY = 'pushNotificationPermissionPromptShown';
 window.PUSH_NOTIFICATION.PERMISSION_PROMPT_DELAY = 3000; // 3 seconds
-//window.PUSH_NOTIFICATION.IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-window.PUSH_NOTIFICATION.IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ;
 window.PUSH_NOTIFICATION.IS_ANDROID = /Android/.test(navigator.userAgent);
+window.PUSH_NOTIFICATION.IS_IOS = /AppleWebKit|iPad|iPhone|iPod/.test(navigator.userAgent) ;
+
 if (window.PUSH_NOTIFICATION.IS_IOS) {
-	showToast('IOS IS SET', 'IOS SET', 'success', 10000);
-	} else{ showToast('IOS NOT SET', navigator.userAgent, 'success', 10000)
+	showToast('IOS IS SET', navigator.platform, 'success', 10000);
+	} else{ showToast('IOS NOT SET', navigator.platform, 'success', 10000)
 	}
 
 // Variable to track if initialization has been done
