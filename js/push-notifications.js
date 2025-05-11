@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', setupPushNotificationListeners);
 
 // When user logs in, initialize push notifications
 document.addEventListener('login-state-changed', function(event) {
-  if (event.detail && event.detail.loggedIn) {F
+  if (event.detail && event.detail.loggedIn) {
     // Call after a short delay to ensure profile is loaded
     setTimeout(initializePushNotifications, 2000);
   }
