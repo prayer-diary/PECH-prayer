@@ -22,15 +22,6 @@ if (!window.PUSH_NOTIFICATION.IS_ANDROID && !window.PUSH_NOTIFICATION.IS_IOS) {
         (navigator.platform === 'iPad' || navigator.platform === 'iPhone' || navigator.platform === 'iPod');
 }
 
-// Log the detection results for debugging
-console.log('Device Detection:', {
-    userAgent: navigator.userAgent,
-    platform: navigator.platform,
-    isAndroid: window.PUSH_NOTIFICATION.IS_ANDROID,
-    isIOS: window.PUSH_NOTIFICATION.IS_IOS,
-    maxTouchPoints: navigator.maxTouchPoints
-});
-
 // Variable to track if initialization has been done
 let pushInitialized = false;
 
@@ -44,27 +35,6 @@ document.addEventListener('login-state-changed', function(event) {
     setTimeout(initializePushNotifications, 2000);
   }
 });
-
-// Get iOS version information
-function getIOSVersion() {
-  if (!window.PUSH_NOTIFICATION.IS_IOS) return null;
-  
-  const match = navigator.userAgent.match(/OS (\d+)_(\d+)_?(\d+)?/);
-  return match ? {
-    major: parseInt(match[1], 10),
-    minor: parseInt(match[2], 10),
-    patch: parseInt(match[3] || 0, 10)
-  } : null;
-}
-
-// Check if iOS version supports push API (16.4+)
-function isIOSVersionSupported() {
-  const version = getIOSVersion();
-  if (!version) return false;
-  
-  // Push API is supported from iOS 16.4+
-  return (version.major > 16) || (version.major === 16 && version.minor >= 4);
-}
 
 // More reliable standalone mode detection for iOS
 function isIOSStandalone() {
@@ -85,98 +55,8 @@ window.isInStandaloneMode = function isInStandaloneMode() {
   const androidApp = document.referrer.includes('android-app://');
   const installedFlag = localStorage.getItem('prayerDiaryInstalled') === 'true';
   
-  // Log the detected mode for debugging
-  console.log('Mode detection:', {
-    displayModeStandalone,
-    navigatorStandalone,
-    androidApp,
-    installedFlag
-  });
-  
   return displayModeStandalone || navigatorStandalone || androidApp || installedFlag;
 }
-
-// Advanced device debug logging function
-function logDeviceDebugInfo() {
-  // Create a comprehensive device and environment report
-  const debugInfo = {
-    device: {
-      userAgent: navigator.userAgent,
-      platform: navigator.platform,
-      vendor: navigator.vendor,
-      appName: navigator.appName,
-      appVersion: navigator.appVersion,
-      isAndroid: window.PUSH_NOTIFICATION.IS_ANDROID,
-      isIOS: window.PUSH_NOTIFICATION.IS_IOS,
-      standalone: window.navigator.standalone,
-      displayModeStandalone: window.matchMedia('(display-mode: standalone)').matches,
-      installedFlag: localStorage.getItem('prayerDiaryInstalled') === 'true',
-      language: navigator.language,
-      maxTouchPoints: navigator.maxTouchPoints,
-      cookieEnabled: navigator.cookieEnabled
-    },
-    features: {
-      serviceWorkerSupported: 'serviceWorker' in navigator,
-      pushManagerSupported: 'PushManager' in window,
-      notificationSupported: 'Notification' in window,
-      notificationPermission: Notification.permission
-    },
-    app: {
-      version: window.PRAYER_DIARY ? window.PRAYER_DIARY.version : 'unknown',
-      devMode: window.PRAYER_DIARY ? window.PRAYER_DIARY.devMode : false
-    },
-    screen: {
-      width: window.screen.width,
-      height: window.screen.height,
-      availWidth: window.screen.availWidth,
-      availHeight: window.screen.availHeight,
-      pixelRatio: window.devicePixelRatio
-    }
-  };
-  
-  // Add iOS-specific information if detected as iOS
-  if (window.PUSH_NOTIFICATION.IS_IOS) {
-    const iosVersion = getIOSVersion();
-    debugInfo.ios = {
-      version: iosVersion ? `${iosVersion.major}.${iosVersion.minor}.${iosVersion.patch}` : 'Unknown',
-      isVersionSupported: isIOSVersionSupported(),
-      isStandalone: isIOSStandalone(),
-      webkit: 'webkit' in window
-    };
-  }
-  
-  // Add Android-specific information if detected as Android
-  if (window.PUSH_NOTIFICATION.IS_ANDROID) {
-    // Extract Android version
-    const match = navigator.userAgent.match(/Android (\d+)\.(\d+)\.?(\d+)?/);
-    debugInfo.android = {
-      version: match ? `${match[1]}.${match[2]}.${match[3] || 0}` : 'Unknown',
-      manufacturer: getAndroidManufacturer(),
-      chrome: navigator.userAgent.includes('Chrome'),
-      chromeVersion: navigator.userAgent.match(/Chrome\/(\d+\.\d+)/)?.[1] || 'Unknown'
-    };
-  }
-  
-  console.log('=== Device Debug Information ===');
-  console.log(JSON.stringify(debugInfo, null, 2));
-  console.log('===============================');
-  
-  // Show a notification with key device info
-  if (typeof showNotification === 'function') {
-    showNotification('Device Debug Info', 
-      `Device: ${debugInfo.device.isAndroid ? 'Android' : debugInfo.device.isIOS ? 'iOS' : 'Other'}<br>
-       Browser: ${navigator.userAgent.match(/Chrome|Firefox|Safari|Edge|Samsung|Opera/)?.[0] || 'Unknown'}<br>
-       Push Supported: ${debugInfo.features.pushManagerSupported ? 'Yes' : 'No'}<br>
-       Permission: ${debugInfo.features.notificationPermission}`, 
-      'info', 
-      10000);
-  }
-  
-  return debugInfo;
-}
-
-// Export the debug function for manual testing
-window.debugDeviceInfo = logDeviceDebugInfo;
 
 // Get Android manufacturer from user agent
 function getAndroidManufacturer() {
@@ -239,9 +119,6 @@ function processNotificationClick(notificationData) {
       );
     }
     
-    // Any additional processing for specific notification types can be added here
-    // For example, marking a notification as read in the database
-    
   } catch (error) {
     console.error('Error processing notification click:', error);
   }
@@ -258,23 +135,10 @@ async function initializePushNotifications() {
   try {
     console.log('Initializing push notifications system');
     
-    // Log comprehensive debug info
-    logDeviceDebugInfo();
-    
-    // Check for iOS version support
-    if (window.PUSH_NOTIFICATION.IS_IOS) {
-      if (!isIOSVersionSupported()) {
-        console.log('iOS version does not support Push API (requires iOS 16.4+)');
-        return;
-      }
-      
-      // On iOS, we only proceed if in standalone mode (installed as app)
-      if (!isIOSStandalone()) {
-        console.log('iOS device detected but not in standalone mode, skipping push initialization');
-        return;
-      }
-      
-      console.log('iOS device in standalone mode with supported version, continuing with push initialization');
+    // On iOS, we only proceed if in standalone mode (installed as app)
+    if (window.PUSH_NOTIFICATION.IS_IOS && !isIOSStandalone()) {
+      console.log('iOS device detected but not in standalone mode, skipping push initialization');
+      return;
     }
     
     // Wait for auth to be stable before checking user preferences
@@ -339,7 +203,7 @@ async function checkPushSubscriptionStatus() {
 /**
  * Request push notification permission with consistent UX
  * - Always shows the custom "Enable" screen first
- * - Handles device-specific requirements (iOS standalone mode, version check)
+ * - Handles device-specific requirements (iOS standalone mode)
  * - Should be called when user explicitly opts-in via their profile settings
  * 
  * @param {Function} onSuccess - Callback when permission is granted
@@ -359,17 +223,8 @@ async function requestPushNotificationPermission(onSuccess, onDenied, onRequirem
             return false;
         }
         
-        // 2. iOS-specific checks
+        // 2. iOS-specific checks - only check for standalone mode
         if (window.PUSH_NOTIFICATION.IS_IOS) {
-            // Check iOS version
-            if (!isIOSVersionSupported()) {
-                console.log('iOS version does not support Push API (requires iOS 16.4+)');
-                if (onRequirementsNotMet) {
-                    onRequirementsNotMet('Push notifications require iOS 16.4 or later.');
-                }
-                return false;
-            }
-            
             // Check if in standalone mode
             if (!isIOSStandalone()) {
                 console.log('iOS device not in standalone mode');
@@ -616,7 +471,7 @@ function showIOSNotificationHelp() {
       <li>Find and remove data for this website</li>
       <li>Return to the app and try again</li>
     </ol>
-    <p class="mt-2"><strong>Note:</strong> Push notifications on iOS require iOS 16.4 or later, and the app must be installed to your home screen.</p>
+    <p class="mt-2"><strong>Note:</strong> The app must be installed to your home screen.</p>
   `;
   
   showNotification('iOS Notifications', content);
@@ -951,9 +806,6 @@ async function testPushNotification() {
   try {
     console.log('Sending test push notification...');
     
-    // Log detailed device debug information
-    const deviceInfo = logDeviceDebugInfo();
-    
     // Choose which content type to test - alternating between update and urgent
     // Use local storage to track which one we last tested
     const lastTestedType = localStorage.getItem('lastPushTestType') || 'update';
@@ -1007,18 +859,6 @@ async function testPushNotification() {
     // Add Android-specific parameters
     if (window.PUSH_NOTIFICATION.IS_ANDROID) {
       notificationParams.priority = 'high';
-  /*    notificationParams.actions = [  // Testing missing this out to get better operation on android
-        {
-          action: 'open',
-          title: 'View'
-        },
-        {
-          action: 'dismiss',
-          title: 'Dismiss'
-        }
-      ];
-	  
-  */
       // Android requires more descriptive messages
       notificationParams.message = `This is a test ${testContentType.replace('_', ' ')} notification. Tap to open the ${testContentType === 'prayer_update' ? 'Prayer Updates' : 'Urgent Prayers'} page.`;
     }
