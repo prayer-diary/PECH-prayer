@@ -758,17 +758,8 @@ function setupAllModals() {
     // Initialize UI components
     initUI();
     
-    // Request notification permissions if supported
-    if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
-        // Wait a bit before requesting permissions to avoid overwhelming the user on first visit
-        setTimeout(() => {
-            Notification.requestPermission().then(permission => {
-                if (permission === 'granted') {
-                    console.log('Notification permission granted.');
-                }
-            });
-        }, 5000);
-    }
+    // DO NOT automatically request notification permissions
+    // Permissions will be requested only when user enables notifications in their profile
 }
 
 // Register service worker with explicit push support

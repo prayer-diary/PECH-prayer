@@ -87,7 +87,7 @@ async function loadUserProfile() {
         document.querySelector(`input[name="content-delivery"][value="${contentDeliveryEmail ? 'app-email' : 'app-only'}"]`).checked = true;
         
         // Set notification method radio button based on the new simplified notification_method field
-        loadProfileNotificationSettings(userProfile);
+        await loadProfileNotificationSettings(userProfile);
         
         // Set up notification method change handlers
         setupNotificationMethodHandlers();
@@ -150,6 +150,9 @@ async function loadUserProfile() {
         // Add change handler for photo tag to update preview
         document.getElementById('profile-photo-tag').addEventListener('input', updateProfilePreview);
         
+        // Set up test notification button
+        setupTestNotificationButton();
+        
     } catch (error) {
         console.error('Error loading profile:', error);
         showNotification('Error', `Unable to load your profile: ${error.message}`);
@@ -160,33 +163,50 @@ async function loadUserProfile() {
 }
 
 // Update the profile loading function to handle the new notification structure
-function loadProfileNotificationSettings(profile) {
+async function loadProfileNotificationSettings(profile) {
     // Set the notification radio buttons based on the saved preference
-    // Map old values to new simplified options
-    if (profile.notification_method === 'push' || profile.notification_method === 'sms' || profile.notification_method === 'whatsapp') {
-        document.getElementById('notification-yes').checked = true;
-        document.getElementById('notification-no').checked = false;
-    } else {
-        document.getElementById('notification-yes').checked = false;
-        document.getElementById('notification-no').checked = true;
+    let notificationYes = false;
+    
+    // If user has push notifications set, check if browser permission is actually granted
+    if (profile.notification_method === 'push') {
+        // Check both the database setting AND the browser permission
+        const hasPermission = Notification.permission === 'granted';
+        const hasSubscription = await (window.checkPushSubscriptionStatus ? window.checkPushSubscriptionStatus() : false);
+        
+        // Only enable "Yes" if we have both permission and a subscription
+        if (hasPermission && hasSubscription) {
+            notificationYes = true;
+        } else {
+            // User has it enabled in database but not in browser - reset to "No"
+            console.log('User has push enabled in database but no browser permission/subscription');
+            notificationYes = false;
+        }
     }
     
+    document.getElementById('notification-yes').checked = notificationYes;
+    document.getElementById('notification-no').checked = !notificationYes;
+    
     // Trigger the change event to show/hide appropriate panels
-    handleNotificationChange();
+    await handleNotificationChange();
 }
 
 // Update the profile saving function to handle the new notification structure
 function saveProfileNotificationSettings() {
     const notificationYes = document.getElementById('notification-yes').checked;
     
-    // Map the simplified options to the existing database structure
-    // For now, if they select "Yes", we default to push notifications
-    const notificationMethod = notificationYes ? 'push' : 'none';
+    // Check if the user actually has permission when they say "Yes"
+    const hasPermission = Notification.permission === 'granted';
+    
+    // Only set to 'push' if they checked Yes AND have browser permission
+    let notificationMethod = 'none';
+    if (notificationYes && hasPermission) {
+        notificationMethod = 'push';
+    }
     
     return {
         notification_method: notificationMethod,
         // Keep other notification fields for future use
-        notification_push: notificationYes
+        notification_push: notificationYes && hasPermission
     };
 }
 
@@ -194,15 +214,85 @@ function saveProfileNotificationSettings() {
 async function handleNotificationChange() {
     const notificationYes = document.getElementById('notification-yes');
     const notificationNo = document.getElementById('notification-no');
+    const testingPanel = document.getElementById('notification-testing-panel');
     
     if (notificationYes && notificationYes.checked) {
-        // Hide phone number section (SMS/WhatsApp are dormant)
-        document.getElementById('phone-number-section').classList.add('d-none');
+        // User selected "Yes" for notifications
+        
+        // Show the testing panel
+        if (testingPanel) {
+            testingPanel.classList.remove('d-none');
+        }
+        
+        // Check if we need to request permission
+        if (Notification.permission !== 'granted') {
+            console.log('User wants notifications but permission not yet granted');
+            
+            // Show temporary message while permission is being handled
+            showNotification('Enabling Notifications', 'Please allow notifications when prompted to complete the setup.');
+            
+            // Request permission using the unified flow
+            await window.requestPushNotificationPermission(
+                // Success callback
+                () => {
+                    console.log('Push notifications enabled successfully');
+                    showNotification('Success', 'Push notifications are now enabled! You can test them using the button below.', 'success');
+                },
+                // Denied callback
+                (message) => {
+                    console.log('Push notification permission denied');
+                    showNotification('Permission Denied', message, 'warning');
+                    
+                    // Reset the user's selection since permission wasn't granted
+                    document.getElementById('notification-no').checked = true;
+                    document.getElementById('notification-yes').checked = false;
+                    
+                    // Hide the testing panel
+                    if (testingPanel) {
+                        testingPanel.classList.add('d-none');
+                    }
+                },
+                // Requirements not met callback
+                (message) => {
+                    console.log('Push notification requirements not met');
+                    showNotification('Not Available', message, 'info');
+                    
+                    // Reset the user's selection since requirements aren't met
+                    document.getElementById('notification-no').checked = true;
+                    document.getElementById('notification-yes').checked = false;
+                    
+                    // Hide the testing panel
+                    if (testingPanel) {
+                        testingPanel.classList.add('d-none');
+                    }
+                }
+            );
+        } else {
+            // Permission already granted
+            console.log('Push notifications already enabled');
+            
+            // Ensure we have an active subscription
+            const hasSubscription = await window.checkPushSubscriptionStatus();
+            if (!hasSubscription) {
+                // Create subscription if it doesn't exist
+                await subscribeToPushNotifications();
+            }
+        }
+        
     } else {
-        // Hide notification testing panel when "No" is selected
-        // Hide phone number section completely
-        document.getElementById('phone-number-section').classList.add('d-none');
+        // User selected "No" for notifications
+        if (testingPanel) {
+            testingPanel.classList.add('d-none');
+        }
+        
+        // Optionally unsubscribe if they had notifications enabled
+        if (window.unsubscribeFromPushNotifications) {
+            await window.unsubscribeFromPushNotifications();
+        }
     }
+    
+    // Hide phone number section (SMS/WhatsApp are dormant)
+    document.getElementById('phone-number-section').classList.add('d-none');
 }
 
 function setupProfileImageHandlers() {
@@ -558,6 +648,54 @@ function setupNotificationMethodHandlers() {
                 }
             } else {
                 this.classList.remove('is-invalid');
+            }
+        });
+    }
+}
+
+// Set up the test notification button
+function setupTestNotificationButton() {
+    const testButton = document.getElementById('test-notification-btn');
+    
+    if (testButton) {
+        // Remove any existing event listeners
+        const newButton = testButton.cloneNode(true);
+        testButton.parentNode.replaceChild(newButton, testButton);
+        
+        // Add the click handler
+        newButton.addEventListener('click', async function() {
+            try {
+                // Disable button during request
+                this.disabled = true;
+                this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Sending...';
+                
+                // Check if user has permission
+                if (Notification.permission !== 'granted') {
+                    showNotification('Permission Required', 'Notifications must be enabled before testing. Please enable them first.', 'warning');
+                    return;
+                }
+                
+                // Send test notification (make sure testPushNotification is available)
+                if (window.testPushNotification) {
+                    const result = await window.testPushNotification();
+                    
+                    if (result) {
+                        showNotification('Test Sent', 'Test notification sent successfully! Check your notification tray.', 'success');
+                    } else {
+                        showNotification('Test Failed', 'Failed to send test notification. Please try again.', 'error');
+                    }
+                } else {
+                    console.error('testPushNotification function not available');
+                    showNotification('Error', 'Test notification function not available.', 'error');
+                }
+                
+            } catch (error) {
+                console.error('Error sending test notification:', error);
+                showNotification('Error', `Failed to send test notification: ${error.message}`, 'error');
+            } finally {
+                // Re-enable button
+                this.disabled = false;
+                this.innerHTML = '<i class="bi bi-bell me-2"></i>Send Test Notification';
             }
         });
     }

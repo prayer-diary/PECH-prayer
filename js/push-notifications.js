@@ -158,16 +158,6 @@ function getAndroidManufacturer() {
 
 // Set up listeners for the notification permission UI
 function setupPushNotificationListeners() {
-  // Set up permission prompt listeners
-  setupPermissionPromptListeners();
-  
-  // Listen for changes in user preferences
-  document.addEventListener('user-preferences-changed', function(event) {
-    if (event.detail && event.detail.notificationMethod === 'push') {
-      requestNotificationPermission();
-    }
-  });
-  
   // Listen for service worker messages
   if (navigator.serviceWorker) {
     navigator.serviceWorker.addEventListener('message', function(event) {
@@ -217,7 +207,7 @@ async function initializePushNotifications() {
   }
   
   try {
-    console.log('Initializing push notifications');
+    console.log('Initializing push notifications system');
     
     // Log comprehensive debug info
     logDeviceDebugInfo();
@@ -230,10 +220,8 @@ async function initializePushNotifications() {
       }
       
       // On iOS, we only proceed if in standalone mode (installed as app)
-      // But we use our improved detection method
       if (!isIOSStandalone()) {
         console.log('iOS device detected but not in standalone mode, skipping push initialization');
-        showIOSInstallInstructions();
         return;
       }
       
@@ -243,112 +231,242 @@ async function initializePushNotifications() {
     // Wait for auth to be stable before checking user preferences
     await waitForAuthStability();
     
-    // Only proceed if the user is logged in and has a profile
-    if (!isLoggedIn() || !userProfile) {
-      console.log('User not logged in or profile not loaded, skipping push initialization');
+    // Only proceed if the user is logged in
+    if (!isLoggedIn()) {
+      console.log('User not logged in, skipping push initialization');
       return;
     }
     
-    // Check if user has opted for push notifications
-    if (userProfile.notification_method === 'push') {
-      console.log('User has opted for push notifications, checking subscription');
-      
-      // Check if push is supported in this browser
-      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        console.log('Push notifications not supported in this browser');
-        return;
-      }
-      
-      // Check permission state
-      const permission = Notification.permission;
-      if (permission === 'denied') {
-        console.log('Push permission denied by user');
-        // Consider updating the user profile to disable push if permission denied
-        return;
-      }
-      
-      // Only proceed if permission is granted
-      if (permission === 'granted') {
-        // For Android, make sure the service worker is properly registered and active
-        if (window.PUSH_NOTIFICATION.IS_ANDROID) {
-          await ensureServiceWorkerRegistered();
-        }
-        
-        // Now get the service worker registration
-        const registration = window.swRegistration || await navigator.serviceWorker.ready;
-        
-        if (!registration || !registration.active) {
-          console.error('No active service worker found');
-          return;
-        }
-        
-        console.log('Service worker is active:', registration.active.state);
-        
-        // Check existing subscription
-        let subscription = await registration.pushManager.getSubscription();
-        
-        // If no subscription exists or it needs to be renewed, create a new one
-        if (!subscription) {
-          console.log('No existing push subscription, creating new one');
-          
-          // Get VAPID key from server
-          const vapidPublicKey = await getVapidPublicKey();
-          
-          try {
-            // Create new subscription with platform-specific options
-            const subscriptionOptions = {
-              userVisibleOnly: true,
-              applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
-            };
-            
-            // Add Safari-specific parameters if on iOS
-            if (window.PUSH_NOTIFICATION.IS_IOS) {
-              // When debugging, explicitly request the prompt
-              subscriptionOptions.prompt = true;
-            }
-            
-            subscription = await registration.pushManager.subscribe(subscriptionOptions);
-            
-            console.log('Push subscription created successfully');
-            
-            // Save the new subscription to database
-            await saveSubscriptionToDatabase(subscription);
-          } catch (subscribeError) {
-            console.error('Failed to subscribe to push:', subscribeError);
-            
-            // Check if on iOS and provide specific guidance
-            if (window.PUSH_NOTIFICATION.IS_IOS) {
-              if (subscribeError.name === 'NotAllowedError') {
-                showIOSNotificationHelp();
-              } else {
-                // Handle other iOS-specific errors
-                const errorMessage = `iOS push registration error: ${subscribeError.message}`;
-                console.error(errorMessage);
-                showNotification('Push Registration Failed', errorMessage, 'error');
-              }
-            }
-            return;
-          }
-        } else {
-          console.log('Existing push subscription found, updating database');
-          // Update the existing subscription in the database
-          await saveSubscriptionToDatabase(subscription);
-        }
-        
-        pushInitialized = true;
-        console.log('Push notification initialization complete');
-      } else {
-        // Ask for permission if not yet granted
-        console.log('Permission not granted, requesting permission');
-        requestNotificationPermission();
-      }
-    } else {
-      console.log('User has not opted for push notifications, skipping initialization');
+    // Check if service worker is supported
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      console.log('Push notifications not supported in this browser');
+      return;
     }
+    
+    // Ensure service worker is registered (but don't check subscription yet)
+    if (window.PUSH_NOTIFICATION.IS_ANDROID) {
+      await ensureServiceWorkerRegistered();
+    }
+    
+    pushInitialized = true;
+    console.log('Push notification system initialized (ready for user opt-in)');
+    
+    // IMPORTANT: DO NOT automatically check permission or create subscriptions
+    // Permissions will be requested only when user enables notifications in profile
+    
   } catch (error) {
     console.error('Error initializing push notifications:', error);
   }
 }
+
+// Add a function to check if user has an active subscription (for profile display)
+async function checkPushSubscriptionStatus() {
+  try {
+    // Only check if service worker is ready
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      return false;
+    }
+    
+    // Get the service worker registration
+    const registration = window.swRegistration || await navigator.serviceWorker.ready;
+    
+    if (!registration || !registration.active) {
+      return false;
+    }
+    
+    // Check existing subscription
+    const subscription = await registration.pushManager.getSubscription();
+    
+    return subscription !== null;
+  } catch (error) {
+    console.error('Error checking push subscription status:', error);
+    return false;
+  }
+}
+
+// UNIFIED PERMISSION REQUEST FLOW
+// This is the ONLY place where Notification.requestPermission() should be called
+
+/**
+ * Request push notification permission with consistent UX
+ * - Always shows the custom "Enable" screen first
+ * - Handles device-specific requirements (iOS standalone mode, version check)
+ * - Should be called when user explicitly opts-in via their profile settings
+ * 
+ * @param {Function} onSuccess - Callback when permission is granted
+ * @param {Function} onDenied - Callback when permission is denied
+ * @param {Function} onRequirementsNotMet - Callback when device requirements aren't met
+ */
+async function requestPushNotificationPermission(onSuccess, onDenied, onRequirementsNotMet) {
+    try {
+        console.log('Starting unified push notification permission request...');
+        
+        // 1. Check if notifications are supported
+        if (!('Notification' in window)) {
+            console.log('Notifications not supported in this browser');
+            if (onRequirementsNotMet) {
+                onRequirementsNotMet('Notifications are not supported in this browser.');
+            }
+            return false;
+        }
+        
+        // 2. iOS-specific checks
+        if (window.PUSH_NOTIFICATION.IS_IOS) {
+            // Check iOS version
+            if (!isIOSVersionSupported()) {
+                console.log('iOS version does not support Push API (requires iOS 16.4+)');
+                if (onRequirementsNotMet) {
+                    onRequirementsNotMet('Push notifications require iOS 16.4 or later.');
+                }
+                return false;
+            }
+            
+            // Check if in standalone mode
+            if (!isIOSStandalone()) {
+                console.log('iOS device not in standalone mode');
+                if (onRequirementsNotMet) {
+                    onRequirementsNotMet('On iOS, the app must be installed to your home screen first.');
+                }
+                // Show installation instructions
+                showIOSInstallInstructions();
+                return false;
+            }
+        }
+        
+        // 3. Check current permission state
+        if (Notification.permission === 'granted') {
+            // Already granted - proceed with subscription
+            await subscribeToPushNotifications();
+            if (onSuccess) onSuccess();
+            return true;
+        }
+        
+        if (Notification.permission === 'denied') {
+            // Previously denied - show instructions to re-enable
+            console.log('Permission previously denied');
+            if (onDenied) {
+                onDenied('Notification permissions were previously denied. Please enable them in your browser settings.');
+            }
+            
+            // Show platform-specific help
+            if (window.PUSH_NOTIFICATION.IS_IOS) {
+                showIOSNotificationHelp();
+            } else if (window.PUSH_NOTIFICATION.IS_ANDROID) {
+                showAndroidNotificationHelp();
+            } else {
+                showNotificationHelp();
+            }
+            return false;
+        }
+        
+        // 4. Permission is "default" - show the custom Enable screen
+        const userAccepted = await showCustomPermissionPrompt();
+        
+        if (!userAccepted) {
+            console.log('User declined custom permission prompt');
+            return false;
+        }
+        
+        // 5. User clicked "Enable" - now request browser permission
+        const permission = await Notification.requestPermission();
+        
+        if (permission === 'granted') {
+            console.log('Notification permission granted!');
+            
+            // Subscribe to push notifications
+            await subscribeToPushNotifications();
+            
+            if (onSuccess) onSuccess();
+            return true;
+        } else {
+            console.log('Notification permission not granted:', permission);
+            if (onDenied) {
+                onDenied('Notification permission was not granted.');
+            }
+            return false;
+        }
+        
+    } catch (error) {
+        console.error('Error in unified permission request:', error);
+        
+        // Special handling for iOS permission errors
+        if (window.PUSH_NOTIFICATION.IS_IOS) {
+            showIOSNotificationHelp();
+        }
+        
+        if (onDenied) {
+            onDenied(`Error requesting permissions: ${error.message}`);
+        }
+        return false;
+    }
+}
+
+// Update the existing showCustomPermissionPrompt to ensure it always returns a promise
+function showCustomPermissionPrompt() {
+    return new Promise((resolve) => {
+        // Remove any existing prompt
+        const existingPrompt = document.querySelector('.notification-permission-prompt');
+        if (existingPrompt) {
+            existingPrompt.remove();
+        }
+        
+        // Create the prompt element
+        const promptElement = document.createElement('div');
+        promptElement.className = 'notification-permission-prompt';
+        promptElement.innerHTML = `
+            <h5><i class="bi bi-bell me-2"></i>Enable Notifications</h5>
+            <p>Get instant updates when new prayer requests are added. Never miss an urgent prayer need.</p>
+            <div class="actions">
+                <button id="notification-later-btn" class="btn btn-sm btn-outline-secondary">Ask Later</button>
+                <button id="notification-allow-btn" class="btn btn-sm btn-primary">Enable</button>
+            </div>
+        `;
+        
+        // Add to document
+        document.body.appendChild(promptElement);
+        
+        // Animate in
+        setTimeout(() => {
+            promptElement.classList.add('show');
+        }, 100);
+        
+        // Add button listeners
+        document.getElementById('notification-allow-btn').addEventListener('click', () => {
+            // Mark prompt as shown
+            localStorage.setItem(window.PUSH_NOTIFICATION.PERMISSION_PROMPT_KEY, 'true');
+            
+            // Remove the prompt
+            promptElement.classList.remove('show');
+            setTimeout(() => {
+                if (promptElement.parentNode) {
+                    promptElement.parentNode.removeChild(promptElement);
+                }
+            }, 300);
+            
+            // Resolve with true to proceed with browser prompt
+            resolve(true);
+        });
+        
+        document.getElementById('notification-later-btn').addEventListener('click', () => {
+            // Remove the prompt
+            promptElement.classList.remove('show');
+            setTimeout(() => {
+                if (promptElement.parentNode) {
+                    promptElement.parentNode.removeChild(promptElement);
+                }
+            }, 300);
+            
+            // Resolve with false to cancel
+            resolve(false);
+        });
+    });
+}
+
+// Export the subscription status check function
+window.checkPushSubscriptionStatus = checkPushSubscriptionStatus;
+
+// Export the unified function for use in profile.js
+window.requestPushNotificationPermission = requestPushNotificationPermission;
 
 // Ensure the service worker is registered correctly (especially for Android)
 async function ensureServiceWorkerRegistered() {
@@ -429,148 +547,12 @@ async function ensureServiceWorkerRegistered() {
   }
 }
 
-// Request notification permission
+// OLD FUNCTION - Redirect to the new one for compatibility
 async function requestNotificationPermission() {
-  // Check if notifications are supported
-  if (!('Notification' in window)) {
-    console.log('This browser does not support notifications');
-    showNotification('Not Supported', 'Notifications are not supported in this browser.', 'warning');
-    return false;
-  }
-  
-  // Check if we're on iOS
-  if (window.PUSH_NOTIFICATION.IS_IOS) {
-    // Check iOS version first
-    if (!isIOSVersionSupported()) {
-      console.log('iOS version does not support Push API (requires iOS 16.4+)');
-      showNotification('Not Supported', 'Push notifications require iOS 16.4 or later.', 'warning');
-      return false;
-    }
+    console.warn('requestNotificationPermission is deprecated. Use requestPushNotificationPermission instead.');
     
-    // Apple requires PWAs to be in standalone mode (installed) for notifications
-    if (!isIOSStandalone()) {
-      console.log('iOS device detected but not in standalone mode');
-      
-      // Show special iOS install prompt
-      showIOSInstallInstructions();
-      return false;
-    }
-    
-    // iOS Safari has limited notification support
-    if (Notification.permission === 'denied') {
-      console.log('Notification permission previously denied on iOS');
-      showIOSNotificationHelp();
-      return false;
-    }
-  }
-  
-  // If permission already granted, we're good
-  if (Notification.permission === 'granted') {
-    console.log('Notification permission already granted');
-    return true;
-  }
-  
-  // If permission denied (non-iOS case, since we handled iOS above)
-  if (Notification.permission === 'denied') {
-    console.log('Notification permission previously denied');
-    showNotificationHelp();
-    return false;
-  }
-  
-  try {
-    // Show custom permission prompt first for better UX
-    const shouldProceed = await showCustomPermissionPrompt();
-    
-    if (shouldProceed) {
-      // Request browser permission
-      const permission = await Notification.requestPermission();
-      
-      if (permission === 'granted') {
-        console.log('Notification permission granted!');
-        
-        // Now that we have permission, we can subscribe
-        await subscribeToPushNotifications();
-        return true;
-      } else {
-        console.log('Notification permission not granted:', permission);
-        return false;
-      }
-    } else {
-      console.log('User declined custom permission prompt');
-      return false;
-    }
-  } catch (error) {
-    console.error('Error requesting notification permission:', error);
-    
-    // Special handling for iOS permission errors
-    if (window.PUSH_NOTIFICATION.IS_IOS) {
-      showIOSNotificationHelp();
-    }
-    
-    return false;
-  }
-}
-
-// Show a custom permission prompt to improve user experience
-function showCustomPermissionPrompt() {
-  return new Promise((resolve) => {
-    // Check if we've shown this prompt before
-    const promptShown = localStorage.getItem(window.PUSH_NOTIFICATION.PERMISSION_PROMPT_KEY);
-    if (promptShown) {
-      // If we've shown it before, just proceed to browser prompt
-      resolve(true);
-      return;
-    }
-    
-    // Create a custom prompt element
-    const promptElement = document.createElement('div');
-    promptElement.className = 'notification-permission-prompt';
-    promptElement.innerHTML = `
-      <h5><i class="bi bi-bell me-2"></i>Enable Notifications?</h5>
-      <p>Allow notifications to receive alerts when new prayer updates and urgent prayer requests are added.</p>
-      <div class="actions">
-        <button id="notification-later-btn" class="btn btn-sm btn-outline-secondary">Ask Later</button>
-        <button id="notification-allow-btn" class="btn btn-sm btn-primary">Allow</button>
-      </div>
-    `;
-    
-    // Add to document
-    document.body.appendChild(promptElement);
-    
-    // Animate in
-    setTimeout(() => {
-      promptElement.classList.add('show');
-    }, 100);
-    
-    // Add button listeners
-    document.getElementById('notification-allow-btn').addEventListener('click', () => {
-      // Mark prompt as shown
-      localStorage.setItem(window.PUSH_NOTIFICATION.PERMISSION_PROMPT_KEY, 'true');
-      // Remove the prompt
-      promptElement.classList.remove('show');
-      setTimeout(() => {
-        document.body.removeChild(promptElement);
-      }, 300);
-      // Resolve with true to proceed with browser prompt
-      resolve(true);
-    });
-    
-    document.getElementById('notification-later-btn').addEventListener('click', () => {
-      // Remove the prompt without marking it as shown permanently
-      promptElement.classList.remove('show');
-      setTimeout(() => {
-        document.body.removeChild(promptElement);
-      }, 300);
-      // Resolve with false to cancel
-      resolve(false);
-    });
-  });
-}
-
-// Setup permission prompt listeners
-function setupPermissionPromptListeners() {
-  // We'll use standard click handlers which will be set up on the elements
-  // when they're created in showCustomPermissionPrompt
+    // Fallback: redirect to the new unified function
+    return await requestPushNotificationPermission();
 }
 
 // Show iOS-specific notification help

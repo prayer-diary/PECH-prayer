@@ -1389,3 +1389,109 @@ body.small-photo .prayer-card .card-body [style*="float: left"] {
         font-size: 0.8rem;
     }
 }
+/* Add these styles to your existing style.css file */
+
+/* Push notification permission prompt styles */
+.notification-permission-prompt {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1050;
+    width: 350px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    padding: 16px;
+    transform: translateY(100px);
+    opacity: 0;
+    transition: all 0.3s ease;
+    border-left: 4px solid #483D8B;
+}
+
+.notification-permission-prompt.show {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.notification-permission-prompt h5 {
+    margin-top: 0;
+    color: #483D8B;
+    font-size: 1.1rem;
+    margin-bottom: 8px;
+}
+
+.notification-permission-prompt p {
+    color: #666;
+    margin-bottom: 12px;
+    font-size: 0.95rem;
+    line-height: 1.4;
+}
+
+.notification-permission-prompt .actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.notification-permission-prompt .actions .btn {
+    font-size: 0.9rem;
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 768px) {
+    .notification-permission-prompt {
+        width: calc(100% - 40px);
+        left: 20px;
+        right: 20px;
+        bottom: 15px;
+    }
+}
+
+/* Dark theme support (if needed) */
+@media (prefers-color-scheme: dark) {
+    .notification-permission-prompt {
+        background-color: #1a1a1a;
+        color: #fff;
+    }
+    
+    .notification-permission-prompt h5 {
+        color: #7B68BB;
+    }
+    
+    .notification-permission-prompt p {
+        color: #ccc;
+    }
+}
+
+/* Animation keyframes for smooth entry/exit */
+@keyframes slideInUp {
+    from {
+        transform: translateY(100px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOutDown {
+    from {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateY(100px);
+        opacity: 0;
+    }
+}
+
+/* Enhanced animation classes */
+.notification-permission-prompt.animate-in {
+    animation: slideInUp 0.3s ease-out forwards;
+}
+
+.notification-permission-prompt.animate-out {
+    animation: slideOutDown 0.3s ease-in forwards;
+}
