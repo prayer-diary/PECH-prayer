@@ -9,9 +9,10 @@ window.PUSH_NOTIFICATION.IS_ANDROID = /Android/.test(navigator.userAgent);
 window.PUSH_NOTIFICATION.IS_IOS = /AppleWebKit|iPad|iPhone|iPod/.test(navigator.userAgent) ;
 
 if (window.PUSH_NOTIFICATION.IS_IOS) {
-	showToast('IOS IS SET', navigator.maxTouchPoints, 'success', 10000);
-	} else{ showToast('IOS NOT SET', navigator.platform, 'success', 10000)
+	if (navigator.maxTouchPoints < 1) {
+		window.PUSH_NOTIFICATION.IS_IOS = false;  //Probably MacOs
 	}
+} ;
 
 // Variable to track if initialization has been done
 let pushInitialized = false;
