@@ -1,7 +1,7 @@
 // Service Worker for PECH Prayer Diary PWA
 
 // Cache version - update this number to force refresh of caches
-const CACHE_VERSION = '1.1.089';
+const CACHE_VERSION = '1.1.090';
 const CACHE_NAME = `prayer-diary-cache-${CACHE_VERSION}`;
 
 // App shell files to cache initially

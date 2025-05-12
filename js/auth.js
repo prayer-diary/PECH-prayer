@@ -1382,6 +1382,50 @@ async function notifyAdminsAboutNewUser(userName, userEmail) {
     }
 }
 
+// Function to set up password reset close button
+function setupPasswordResetCloseButton() {
+    const closeButton = document.getElementById('reset-close');
+    
+    if (closeButton) {
+        // Replace any existing event listeners
+        const newCloseButton = closeButton.cloneNode(true);
+        closeButton.parentNode.replaceChild(newCloseButton, closeButton);
+        
+        // Add new event listener to completely close the app
+        newCloseButton.addEventListener('click', function() {
+            // First close the modal if it's open
+            const modal = bootstrap.Modal.getInstance(document.getElementById('password-reset-modal'));
+            if (modal) {
+                modal.hide();
+            }
+            
+            // Show a message explaining what will happen
+            showNotification(
+                'Application Closing', 
+                'The application will now close. Please check your email for the password reset link and restart the app when ready.', 
+                'info'
+            );
+            
+            // Wait a moment for the notification to be seen, then close the app
+            setTimeout(() => {
+                // For PWA and standalone mode, this is the most reliable way to close
+                window.close();
+                
+                // Fallback for browsers that block window.close()
+                setTimeout(() => {
+                    // If we're still here, window.close() didn't work
+                    // Show additional instructions
+                    showNotification(
+                        'Please Close This Window', 
+                        'Your browser prevented automatic closing. Please manually close this window and check your email for the reset link.', 
+                        'warning'
+                    );
+                }, 1000);
+            }, 3000);
+        });
+    }
+}
+
 // Open the password reset modal
 function openPasswordResetModal() {
     // Close the auth modal first
@@ -1398,6 +1442,9 @@ function openPasswordResetModal() {
     // Show the password reset modal
     const modal = new bootstrap.Modal(document.getElementById('password-reset-modal'));
     modal.show();
+    
+    // Set up the close button behavior
+    setupPasswordResetCloseButton();
 }
 
 // Handle password reset form submission
@@ -1409,6 +1456,7 @@ async function handlePasswordReset(e) {
     const originalText = submitBtn.textContent;
     const errorElement = document.getElementById('password-reset-error');
     const successElement = document.getElementById('password-reset-success');
+    const closeButton = document.getElementById('reset-close');
     
     // Hide previous messages
     errorElement.classList.add('d-none');
@@ -1428,11 +1476,18 @@ async function handlePasswordReset(e) {
         
         // Show success message
         successElement.querySelector('p').textContent = 
-            'Password reset link sent! Please check your email inbox and follow the instructions to reset your password.';
+            'Password reset link sent! Please check your email inbox and follow the instructions to reset your password. This app will now close.';
         successElement.classList.remove('d-none');
         
         // Hide the form
         document.getElementById('password-reset-form').classList.add('d-none');
+        
+        // Make the close button more prominent after success
+        if (closeButton) {
+            closeButton.classList.remove('btn-secondary');
+            closeButton.classList.add('btn-primary');
+            closeButton.focus(); // Focus on the close button
+        }
         
         // Log the success (for debugging)
         console.log('Password reset email sent successfully to:', email);
@@ -1443,7 +1498,7 @@ async function handlePasswordReset(e) {
         errorElement.querySelector('p').textContent = 
             `Failed to send reset email: ${error.message || 'Unknown error'}`;
         errorElement.classList.remove('d-none');
-    } finally {
+        
         // Restore button state
         submitBtn.textContent = originalText;
         submitBtn.disabled = false;
