@@ -110,14 +110,14 @@ function processNotificationClick(notificationData) {
     console.log(`Processing notification click: viewId=${viewId}, contentId=${contentId}`);
     
     // Show a toast notification to confirm the user action
-    if (typeof showToast === 'function') {
-      showToast(
-        'Notification',
-        `Opening ${viewId.replace('-view', '')} content`,
-        'info',
-        3000
-      );
-    }
+    //if (typeof showToast === 'function') {
+    //  showToast(
+    //    'Notification',
+    //    `Opening ${viewId.replace('-view', '')} content`,
+    //    'info',
+    //    3000
+    //  );
+    //}
     
   } catch (error) {
     console.error('Error processing notification click:', error);
@@ -822,14 +822,14 @@ async function testPushNotification() {
     const viewName = viewId.replace('-view', '');
     
     // Show a toast to let the user know what's being tested
-    if (typeof showToast === 'function') {
-      showToast(
-        'Test Notification', 
-        `Sending test ${testContentType.replace('_', ' ')} notification... This will test navigation to the ${testContentType === 'prayer_update' ? 'Prayer Updates' : 'Urgent Prayers'} page.`, 
-        'info', 
-        4000
-      );
-    }
+    //if (typeof showToast === 'function') {
+    //  showToast(
+    //    'Test Notification', 
+    //    `Sending test ${testContentType.replace('_', ' ')} notification... This will test navigation to the //${testContentType === 'prayer_update' ? 'Prayer Updates' : 'Urgent Prayers'} page.`, 
+    //    'info', 
+    //   4000
+    //  );
+    //}
     
     // Prepare notification parameters with hash-based navigation
     const notificationParams = {
@@ -887,7 +887,7 @@ async function testPushNotification() {
         `Test notification sent successfully. If the app is already open, you should see it soon. If not, look for it in your notification tray and tap it to test opening the app and navigating to the ${viewName} view.` :
         `Test notification sent successfully. Wait for it to arrive and tap it to test navigation.`;
       
-      showToast('Notification Sent', successMessage, 'success', 10000);
+    //  showToast('Notification Sent', successMessage, 'success', 10000);
     }
     
     return true;

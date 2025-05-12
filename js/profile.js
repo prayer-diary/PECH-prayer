@@ -229,7 +229,7 @@ async function handleNotificationChange() {
             console.log('User wants notifications but permission not yet granted');
             
             // Show temporary message while permission is being handled
-            showNotification('Enabling Notifications', 'Please allow notifications when prompted to complete the setup.');
+            //showNotification('Enabling Notifications', 'Please allow notifications when prompted to complete the setup.');
             
             // Request permission using the unified flow
             await window.requestPushNotificationPermission(
