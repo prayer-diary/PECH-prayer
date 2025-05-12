@@ -228,8 +228,7 @@ serve(async (req) => {
           // Web Push specific options
           const pushOptions = {
             TTL: 60 * 60 * 24, // 24 hours (in seconds)
-            urgency: platform === 'android' ? 'high' : 'normal',
-            topic: contentType || 'prayer' // For grouping notifications
+            urgency: platform === 'android' ? 'high' : 'normal'
           };
           
           // Send the notification
