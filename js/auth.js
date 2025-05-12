@@ -1233,13 +1233,13 @@ async function createSuperAdmin() {
         // First create the user
         const { data, error } = await supabase.auth.signUp({
             email: 'prayerdiary@pech.co.uk',
-            password: '@Prayer@Diary@',
+            password: 'obfuscate',
             options: {
                 data: {
                     full_name: 'Super Admin'
                 },
                 // Use the GitHub Pages URL for testing
-                emailRedirectTo: 'https:/prayer-diary.github.io/PECH-prayer'
+                emailRedirectTo: 'https://prayer.pech.co.uk'
             }
         });
         
@@ -1411,7 +1411,8 @@ async function handlePasswordReset(e) {
     try {
         // Use the Supabase resetPasswordForEmail function with a special reset page indicator
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: window.location.origin + window.location.pathname + '?reset_password=true'
+            //redirectTo: window.location.origin + window.location.pathname + '?reset_password=true'
+			redirectTo: 'https://prayer.pech.co.uk?reset_password=true'
         });
         
         if (error) throw error;
