@@ -143,99 +143,99 @@
                             <i class="bi bi-exclamation-circle"></i> Urgent Prayers
                         </a>
                     </li>
-                    <li class="nav-item dropdown editor-only hidden">
-                        <a class="nav-link dropdown-toggle" href="#" id="editDropdown" role="button" 
-                           data-bs-toggle="dropdown" aria-expanded="false"
-						   autocomplete="off" data-form-type="other">
-                            <i class="bi bi-pencil"></i> Edit Content
-                        </a>
-                        <ul class="dropdown-menu" aria-labelledby="editDropdown">
-                            <li class="calendar-editor-only hidden">
-                                <a class="dropdown-item" id="nav-manage-calendar" href="#">
-                                    <i class="bi bi-calendar"></i> Manage Prayer Calendar
-                                </a>
-                            </li>
-                            <li class="update-editor-only hidden">
-                                <a class="dropdown-item" id="nav-manage-updates" href="#">
-                                    <i class="bi bi-pencil-square"></i> Manage Prayer Updates
-                                </a>
-                            </li>
-                            <li class="urgent-editor-only hidden">
-                                <a class="dropdown-item" id="nav-manage-urgent" href="#">
-                                    <i class="bi bi-bell"></i> Manage Urgent Prayers
-                                </a>
-                            </li>
-                        </ul>
-                    </li>
-                    <li class="nav-item dropdown admin-only hidden">
-                        <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" 
-                           data-bs-toggle="dropdown" aria-expanded="false"
-						   autocomplete="off" data-form-type="other">
-                            <i class="bi bi-gear"></i> Admin
-                        </a>
-                        <ul class="dropdown-menu" aria-labelledby="adminDropdown">
-                            <li>
-                                <a class="dropdown-item" id="nav-manage-users" href="#">
-                                    <i class="bi bi-people"></i> Manage Users
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item" id="nav-register-email-user" href="#">
-                                    <i class="bi bi-envelope-plus"></i> Register Email-only User
-                                </a>
-                            </li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li>
-                                <a class="dropdown-item" id="nav-test-email" href="#">
-                                    <i class="bi bi-envelope"></i> Test Email Sending
-                                </a>
-                            </li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li>
-                                <a class="dropdown-item" id="nav-print-calendar" href="#">
-                                    <i class="bi bi-printer"></i> Print Prayer Diary
-                                </a>
-                            </li>
-                        </ul>
-                    </li>
+                    <!-- Edit Content Dropdown -->
+					<li class="nav-item dropdown editor-only hidden">
+						<a class="nav-link dropdown-toggle" href="javascript:void(0)" id="editDropdown" role="button" 
+						   data-bs-toggle="dropdown" aria-expanded="false" autocomplete="off" data-form-type="other">
+							<i class="bi bi-pencil"></i> Edit Content
+						</a>
+						<ul class="dropdown-menu" aria-labelledby="editDropdown">
+							<li class="calendar-editor-only hidden">
+								<a class="dropdown-item" id="nav-manage-calendar" href="#" autocomplete="off" data-form-type="other">
+									<i class="bi bi-calendar"></i> Manage Prayer Calendar
+								</a>
+							</li>
+							<li class="update-editor-only hidden">
+								<a class="dropdown-item" id="nav-manage-updates" href="#" autocomplete="off" data-form-type="other">
+									<i class="bi bi-pencil-square"></i> Manage Prayer Updates
+								</a>
+							</li>
+							<li class="urgent-editor-only hidden">
+								<a class="dropdown-item" id="nav-manage-urgent" href="#" autocomplete="off" data-form-type="other">
+									<i class="bi bi-bell"></i> Manage Urgent Prayers
+								</a>
+							</li>
+						</ul>
+					</li>
+					<!-- Admin Dropdown -->
+					<li class="nav-item dropdown admin-only hidden">
+						<a class="nav-link dropdown-toggle" href="javascript:void(0)" id="adminDropdown" role="button" 
+						   data-bs-toggle="dropdown" aria-expanded="false" autocomplete="off" data-form-type="other">
+							<i class="bi bi-gear"></i> Admin
+						</a>
+						<ul class="dropdown-menu" aria-labelledby="adminDropdown">
+							<li>
+								<a class="dropdown-item" id="nav-manage-users" href="#" autocomplete="off" data-form-type="other">
+									<i class="bi bi-people"></i> Manage Users
+								</a>
+							</li>
+							<li>
+								<a class="dropdown-item" id="nav-register-email-user" href="#" autocomplete="off" data-form-type="other">
+									<i class="bi bi-envelope-plus"></i> Register Email-only User
+								</a>
+							</li>
+							<li><hr class="dropdown-divider"></li>
+							<li>
+								<a class="dropdown-item" id="nav-test-email" href="#" autocomplete="off" data-form-type="other">
+									<i class="bi bi-envelope"></i> Test Email Sending
+								</a>
+							</li>
+							<li><hr class="dropdown-divider"></li>
+							<li>
+								<a class="dropdown-item" id="nav-print-calendar" href="#" autocomplete="off" data-form-type="other">
+									<i class="bi bi-printer"></i> Print Prayer Diary
+								</a>
+							</li>
+						</ul>
+					</li>
                 </ul>
                 
                 <div class="d-flex" id="auth-container">
                     <div class="logged-out hidden">
                         <!-- Sign up button removed -->
                     </div>
-                    <div class="d-flex align-items-center logged-in hidden">
-                        <div class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="myDetailsDropdown" role="button" 
-                               data-bs-toggle="dropdown" aria-expanded="false"
-							   autocomplete="off" data-form-type="other">
-                                <i class="bi bi-person-circle"></i> My Details
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="myDetailsDropdown">
-                                <li>
-                                    <a class="dropdown-item" id="nav-profile" href="#">
-                                        <i class="bi bi-person"></i> My Profile
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" id="nav-preferences" href="#">
-                                        <i class="bi bi-sliders"></i> My Preferences
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" id="nav-change-password" href="#">
-                                        <i class="bi bi-key"></i> Change my Password
-                                    </a>
-                                </li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li>
-                                    <button class="dropdown-item" id="btn-logout" type="button">
-                                        <i class="bi bi-box-arrow-right"></i> Log out
-                                    </button>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
+					<!-- My Details Dropdown -->
+					<div class="d-flex align-items-center logged-in hidden">
+						<div class="nav-item dropdown">
+							<a class="nav-link dropdown-toggle" href="javascript:void(0)" id="myDetailsDropdown" role="button" 
+							   data-bs-toggle="dropdown" aria-expanded="false" autocomplete="off" data-form-type="other">
+								<i class="bi bi-person-circle"></i> My Details
+							</a>
+							<ul class="dropdown-menu dropdown-menu-end" aria-labelledby="myDetailsDropdown">
+								<li>
+									<a class="dropdown-item" id="nav-profile" href="#" autocomplete="off" data-form-type="other">
+										<i class="bi bi-person"></i> My Profile
+									</a>
+								</li>
+								<li>
+									<a class="dropdown-item" id="nav-preferences" href="#" autocomplete="off" data-form-type="other">
+										<i class="bi bi-sliders"></i> My Preferences
+									</a>
+								</li>
+								<li>
+									<a class="dropdown-item" id="nav-change-password" href="#" autocomplete="off" data-form-type="other">
+										<i class="bi bi-key"></i> Change my Password
+									</a>
+								</li>
+								<li><hr class="dropdown-divider"></li>
+								<li>
+									<button class="dropdown-item" id="btn-logout" type="button" autocomplete="off" data-form-type="other">
+										<i class="bi bi-box-arrow-right"></i> Log out
+									</button>
+								</li>
+							</ul>
+						</div>
+					</div>
                 </div>
             </div>
         </div>

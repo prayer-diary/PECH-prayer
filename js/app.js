@@ -212,159 +212,187 @@ function showInstallButton() {
     }
 }
 
+// Function to process hash changes
+function processHash() {
+  // Get the current hash without the # symbol
+  const hash = window.location.hash.substring(1);
+  console.log('Processing hash navigation:', hash);
+  
+  // Skip navigation for auth tokens and recovery URLs
+  if (!hash || 
+      hash.includes('access_token=') || 
+      hash.includes('type=recovery') ||
+      hash.includes('refresh_token=')) {
+    console.log('Empty hash or auth token detected - not processing as navigation');
+    return;
+  }
+  
+  // Split by '/' to get parts
+  const parts = hash.split('/');
+  const viewName = parts[0];
+  
+  // Map view name to view ID
+  let viewId;
+  switch (viewName.toLowerCase()) {
+    case 'updates':
+      viewId = 'updates-view';
+      break;
+    case 'urgent':
+      viewId = 'urgent-view';
+      break;
+    case 'calendar':
+      viewId = 'calendar-view';
+      break;
+    default:
+      viewId = viewName.includes('-view') ? viewName : `${viewName}-view`;
+  }
+  
+  // Check if the view exists
+  if (!document.getElementById(viewId)) {
+    console.warn(`View not found: ${viewId}, falling back to calendar-view`);
+    viewId = 'calendar-view';
+  }
+  
+  // Extract content ID if available (format: #viewName/content/contentId)
+  let contentId = null;
+  if (parts.length >= 3 && parts[1] === 'content') {
+    contentId = parts[2];
+    console.log('Content ID found in hash:', contentId);
+  }
+  
+  // Check if splash screen is still active
+  const splashScreen = document.getElementById('splash-screen');
+  if (splashScreen) {
+    console.log('Splash screen still active, deferring navigation');
+    // Wait for splash to complete, then retry
+    const splashObserver = new MutationObserver((mutations, observer) => {
+      if (!document.getElementById('splash-screen')) {
+        observer.disconnect();
+        console.log('Splash screen removed, retrying navigation');
+        processHash();
+      }
+    });
+    splashObserver.observe(document.body, { childList: true, subtree: true });
+    return;
+  }
+  
+  // Use a retry mechanism to ensure the app is ready
+  let retryCount = 0;
+  const maxRetries = 10;
+  
+  function attemptNavigation() {
+    if (isLoggedIn()) {
+      console.log(`App is logged in, navigating to ${viewId}`);
+      
+      // If the app views aren't visible yet, make them visible
+      const appViews = document.getElementById('app-views');
+      const landingView = document.getElementById('landing-view');
+      
+      if (appViews && appViews.classList.contains('d-none')) {
+        appViews.classList.remove('d-none');
+      }
+      
+      if (landingView && !landingView.classList.contains('d-none')) {
+        landingView.classList.add('d-none');
+      }
+      
+      // Show the target view
+      if (typeof showView === 'function') {
+        showView(viewId);
+        console.log(`Successfully showed view: ${viewId}`);
+      } else {
+        console.error('showView function not available');
+      }
+      
+      // Load the appropriate content based on the view
+      try {
+        if (viewId === 'calendar-view' && typeof loadPrayerCalendar === 'function') {
+          loadPrayerCalendar();
+          console.log('Loaded prayer calendar');
+        }
+        else if (viewId === 'updates-view' && typeof loadPrayerUpdates === 'function') {
+          loadPrayerUpdates();
+          console.log('Loaded prayer updates');
+          
+          // If we have a contentId, try to open that specific update
+          if (contentId && typeof viewUpdate === 'function') {
+            setTimeout(() => {
+              console.log('Opening specific update:', contentId);
+              viewUpdate(contentId);
+            }, 1000);
+          }
+        }
+        else if (viewId === 'urgent-view' && typeof loadUrgentPrayers === 'function') {
+          loadUrgentPrayers();
+          console.log('Loaded urgent prayers');
+          
+          // If we have a contentId, try to open that specific urgent prayer
+          if (contentId && typeof viewUrgentPrayer === 'function') {
+            setTimeout(() => {
+              console.log('Opening specific urgent prayer:', contentId);
+              viewUrgentPrayer(contentId);
+            }, 1000);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading content for view:', error);
+      }
+    } else {
+      // App isn't logged in yet, retry if we haven't exceeded max retries
+      retryCount++;
+      if (retryCount < maxRetries) {
+        console.log(`App not ready, retry ${retryCount}/${maxRetries}...`);
+        setTimeout(attemptNavigation, 1000);
+      } else {
+        console.error('Failed to navigate after maximum retries - not logged in');
+        
+        // Store the navigation intent for after login
+        sessionStorage.setItem('pendingNavigation', JSON.stringify({
+          viewId: viewId,
+          contentId: contentId
+        }));
+        
+        console.log('Stored navigation intent for after login');
+      }
+    }
+  }
+  
+  // Start navigation process
+  attemptNavigation();
+}
+
 // Hash-based navigation handler for app.js
 function setupHashNavigation() {
   console.log('Setting up hash-based navigation handler');
   
-  // Function to process hash changes
-  function processHash() {
-    // Get the current hash without the # symbol
-    const hash = window.location.hash.substring(1);
-    console.log('Processing hash navigation:', hash);
+  // Replace the window hashchange event to handle auth tokens properly
+  window.addEventListener('hashchange', function(event) {
+    const newHash = window.location.hash;
     
-    if (!hash) return; // No hash to process
-    
-    // Split by '/' to get parts
-    const parts = hash.split('/');
-    const viewName = parts[0];
-    
-    // Map view name to view ID
-    let viewId;
-    switch (viewName.toLowerCase()) {
-      case 'updates':
-        viewId = 'updates-view';
-        break;
-      case 'urgent':
-        viewId = 'urgent-view';
-        break;
-      case 'calendar':
-        viewId = 'calendar-view';
-        break;
-      default:
-        viewId = viewName.includes('-view') ? viewName : `${viewName}-view`;
-    }
-    
-    // Check if the view exists
-    if (!document.getElementById(viewId)) {
-      console.warn(`View not found: ${viewId}, falling back to calendar-view`);
-      viewId = 'calendar-view';
-    }
-    
-    // Extract content ID if available (format: #viewName/content/contentId)
-    let contentId = null;
-    if (parts.length >= 3 && parts[1] === 'content') {
-      contentId = parts[2];
-      console.log('Content ID found in hash:', contentId);
-    }
-    
-    // Check if splash screen is still active
-    const splashScreen = document.getElementById('splash-screen');
-    if (splashScreen) {
-      console.log('Splash screen still active, deferring navigation');
-      // Wait for splash to complete, then retry
-      const splashObserver = new MutationObserver((mutations, observer) => {
-        if (!document.getElementById('splash-screen')) {
-          observer.disconnect();
-          console.log('Splash screen removed, retrying navigation');
-          processHash();
-        }
-      });
-      splashObserver.observe(document.body, { childList: true, subtree: true });
+    // Skip navigation for auth tokens
+    if (newHash.includes('access_token=') || 
+        newHash.includes('type=recovery') ||
+        newHash.includes('refresh_token=')) {
+      console.log('Auth token detected in hash - not processing as navigation');
+      
+      // Clean up URL for security
+      const cleanUrl = window.location.protocol + '//' + window.location.host + window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+      
+      // Show alert for development/debugging
+      if (window.PRAYER_DIARY_DEV_MODE) {
+        console.log('Dev mode: Recovery URL detected and cleaned up');
+      }
+      
+      // Don't process as navigation
+      event.preventDefault();
+      event.stopPropagation();
       return;
     }
     
-    // Use a retry mechanism to ensure the app is ready
-    let retryCount = 0;
-    const maxRetries = 10;
-    
-    function attemptNavigation() {
-      if (isLoggedIn()) {
-        console.log(`App is logged in, navigating to ${viewId}`);
-        
-        // If the app views aren't visible yet, make them visible
-        const appViews = document.getElementById('app-views');
-        const landingView = document.getElementById('landing-view');
-        
-        if (appViews && appViews.classList.contains('d-none')) {
-          appViews.classList.remove('d-none');
-        }
-        
-        if (landingView && !landingView.classList.contains('d-none')) {
-          landingView.classList.add('d-none');
-        }
-        
-        // Show the target view
-        if (typeof showView === 'function') {
-          showView(viewId);
-          console.log(`Successfully showed view: ${viewId}`);
-        } else {
-          console.error('showView function not available');
-        }
-        
-        // Load the appropriate content based on the view
-        try {
-          if (viewId === 'calendar-view' && typeof loadPrayerCalendar === 'function') {
-            loadPrayerCalendar();
-            console.log('Loaded prayer calendar');
-          }
-          else if (viewId === 'updates-view' && typeof loadPrayerUpdates === 'function') {
-            loadPrayerUpdates();
-            console.log('Loaded prayer updates');
-            
-            // If we have a contentId, try to open that specific update
-            if (contentId && typeof viewUpdate === 'function') {
-              setTimeout(() => {
-                console.log('Opening specific update:', contentId);
-                viewUpdate(contentId);
-              }, 1000);
-            }
-          }
-          else if (viewId === 'urgent-view' && typeof loadUrgentPrayers === 'function') {
-            loadUrgentPrayers();
-            console.log('Loaded urgent prayers');
-            
-            // If we have a contentId, try to open that specific urgent prayer
-            if (contentId && typeof viewUrgentPrayer === 'function') {
-              setTimeout(() => {
-                console.log('Opening specific urgent prayer:', contentId);
-                viewUrgentPrayer(contentId);
-              }, 1000);
-            }
-          }
-        } catch (error) {
-          console.error('Error loading content for view:', error);
-        }
-        
-        // Show a toast notification for successful navigation
-        //if (typeof showToast === 'function') {
-        //  showToast('Navigation', `Opened ${viewName} view`, 'info', 3000);
-        //}
-      } else {
-        // App isn't logged in yet, retry if we haven't exceeded max retries
-        retryCount++;
-        if (retryCount < maxRetries) {
-          console.log(`App not ready, retry ${retryCount}/${maxRetries}...`);
-          setTimeout(attemptNavigation, 1000);
-        } else {
-          console.error('Failed to navigate after maximum retries - not logged in');
-          
-          // Store the navigation intent for after login
-          sessionStorage.setItem('pendingNavigation', JSON.stringify({
-            viewId: viewId,
-            contentId: contentId
-          }));
-          
-          console.log('Stored navigation intent for after login');
-        }
-      }
-    }
-    
-    // Start navigation process
-    attemptNavigation();
-  }
-  
-  // Handle hash changes (trigger navigation when hash changes)
-  window.addEventListener('hashchange', processHash);
+    // Process as normal navigation
+    processHash();
+  });
   
   // Process initial hash (if present on page load)
   processHash();
@@ -398,84 +426,9 @@ function setupHashNavigation() {
       }
     }
   });
-}
-
-// Initialize app function
-function initializeApp() {
-    // Set initial flags
-    window.appIsInstallable = false;
-    
-    // Check if the app is already installed and running in standalone mode
-    if (isInStandaloneMode()) {
-        window.restoreAuthFunctionality = true;
-        console.log("App running in standalone mode, auth functionality enabled automatically");
-    } else {
-        window.restoreAuthFunctionality = false;
-        console.log("App running in browser mode, auth functionality dependent on installation state");
-    }
-    
-    // Register service worker first to ensure it's ready for other functionality
-    registerServiceWorkerWithPushSupport()
-      .then(() => {
-        console.log('Service worker registration complete, continuing app initialization');
-        // Check for updates after service worker is registered
-        checkForAppUpdates();
-      })
-      .catch(error => {
-        console.error('Service worker registration failed, continuing without push support:', error);
-      });
-    
-    // Initialize splash screen first
-    initSplashScreen();
-    
-    // Check if returning from profile save (should run early)
-    checkForPostProfileSave();
-    
-    // Set up all modals
-    setupAllModals();
-    
-    // Set up tab close detection for logout
-    setupTabCloseLogout();
-    
-    // Set up hash-based navigation
-    setupHashNavigation();
-    
-    // Force refresh of the drawer navigation after a short delay
-    // This ensures any dynamically added menu items are included
-    setTimeout(function() {
-        document.dispatchEvent(new CustomEvent('navigation-updated'));
-    }, 1500);
-    
-    // Set up delete user confirmation modal functionality
-    const deleteUserModal = document.getElementById('delete-user-modal');
-    if (deleteUserModal) {
-        deleteUserModal.addEventListener('shown.bs.modal', function() {
-            // Focus the confirm delete button when modal is shown
-            const confirmButton = document.getElementById('confirm-delete-user');
-            if (confirmButton) {
-                confirmButton.focus();
-            }
-        });
-    }
-    
-    // Handle login and installation flow sequencing
-    console.log('Checking for installation state...');
-    
-    // Make sure we don't have leftover flags from previous sessions
-    if(sessionStorage.getItem('installButtonShown')) {
-        sessionStorage.removeItem('installButtonShown');
-    }
-    
-    // Nothing else to do here - the beforeinstallprompt event and patched bootstrap modal
-    // will handle the rest of the installation and login process
-    
-    // Initialize topics functionality
-    document.addEventListener('login-state-changed', function(event) {
-        if (event.detail && event.detail.loggedIn) {
-            // Initialize topics when user is logged in
-            initTopics();
-        }
-    });
+  
+  // Export processHash for use by other modules
+  window.processHash = processHash;
 }
 
 // Listen for navigation messages from the service worker
@@ -591,6 +544,21 @@ function initSplashScreen() {
                 hash.includes('urgent') ||
                 hash.includes('calendar')
             );
+            
+            // Check for authentication tokens in the URL
+            const hasAuthToken = 
+                hash.includes('access_token=') || 
+                hash.includes('type=recovery') ||
+                window.location.search.includes('access_token=') ||
+                window.location.search.includes('type=recovery') ||
+                window.location.search.includes('reset_password=');
+                
+            // Special handling for auth tokens
+            if (hasAuthToken) {
+                console.log('Authentication token detected, deferring normal initialization');
+                // Let the auth system handle this - don't force navigation
+                return;
+            }
             
             // Only redirect to default view if:
             // 1. No hash is present (no intended route)
@@ -958,4 +926,129 @@ function showUpdateNotification(newVersion) {
             window.location.reload(true);
         }
     });
+}
+
+// Initialize app function
+function initializeApp() {
+    // Set initial flags
+    window.appIsInstallable = false;
+    
+    // Check if the app is already installed and running in standalone mode
+    if (isInStandaloneMode()) {
+        window.restoreAuthFunctionality = true;
+        console.log("App running in standalone mode, auth functionality enabled automatically");
+    } else {
+        window.restoreAuthFunctionality = false;
+        console.log("App running in browser mode, auth functionality dependent on installation state");
+    }
+    
+    // Register service worker first to ensure it's ready for other functionality
+    registerServiceWorkerWithPushSupport()
+      .then(() => {
+        console.log('Service worker registration complete, continuing app initialization');
+        // Check for updates after service worker is registered
+        checkForAppUpdates();
+      })
+      .catch(error => {
+        console.error('Service worker registration failed, continuing without push support:', error);
+      });
+    
+    // Initialize splash screen first
+    initSplashScreen();
+    
+    // Check if returning from profile save (should run early)
+    checkForPostProfileSave();
+    
+    // Set up all modals
+    setupAllModals();
+    
+    // Set up tab close detection for logout
+    setupTabCloseLogout();
+    
+    // Set up hash-based navigation
+    setupHashNavigation();
+    
+    // Force refresh of the drawer navigation after a short delay
+    // This ensures any dynamically added menu items are included
+    setTimeout(function() {
+        document.dispatchEvent(new CustomEvent('navigation-updated'));
+    }, 1500);
+    
+    // Set up delete user confirmation modal functionality
+    const deleteUserModal = document.getElementById('delete-user-modal');
+    if (deleteUserModal) {
+        deleteUserModal.addEventListener('shown.bs.modal', function() {
+            // Focus the confirm delete button when modal is shown
+            const confirmButton = document.getElementById('confirm-delete-user');
+            if (confirmButton) {
+                confirmButton.focus();
+            }
+        });
+    }
+    
+    // Handle login and installation flow sequencing
+    console.log('Checking for installation state...');
+    
+    // Make sure we don't have leftover flags from previous sessions
+    if(sessionStorage.getItem('installButtonShown')) {
+        sessionStorage.removeItem('installButtonShown');
+    }
+    
+    // Nothing else to do here - the beforeinstallprompt event and patched bootstrap modal
+    // will handle the rest of the installation and login process
+    
+    // Initialize topics functionality
+    document.addEventListener('login-state-changed', function(event) {
+        if (event.detail && event.detail.loggedIn) {
+            // Initialize topics when user is logged in
+            initTopics();
+        }
+    });
+    
+    // Apply password manager prevention attributes to dropdown menus
+    applyPasswordManagerAttributes();
+}
+
+// Function to apply password manager prevention attributes to dropdowns
+function applyPasswordManagerAttributes() {
+  // Select all dropdown toggle elements
+  const dropdownToggles = document.querySelectorAll('.dropdown-toggle');
+  
+  // Apply attributes to prevent password manager detection
+  dropdownToggles.forEach(toggle => {
+    // Add autocomplete="off" attribute
+    toggle.setAttribute('autocomplete', 'off');
+    
+    // Add data-form-type="other" attribute (recognized by many password managers)
+    toggle.setAttribute('data-form-type', 'other');
+    
+    // Add aria-haspopup attribute to indicate it's a menu, not a form field
+    toggle.setAttribute('aria-haspopup', 'true');
+    
+    // Replace href="#" with href="javascript:void(0)" to avoid form-like behavior
+    if (toggle.getAttribute('href') === '#') {
+      toggle.setAttribute('href', 'javascript:void(0)');
+    }
+  });
+  
+  // Also apply to all dropdown menu items
+  const dropdownItems = document.querySelectorAll('.dropdown-menu a.dropdown-item');
+  dropdownItems.forEach(item => {
+    item.setAttribute('autocomplete', 'off');
+    item.setAttribute('data-form-type', 'other');
+    
+    // For items that use href="#", replace with javascript:void(0)
+    if (item.getAttribute('href') === '#') {
+      item.setAttribute('href', 'javascript:void(0)');
+    }
+  });
+  
+  // Also apply to dropdown buttons
+  const dropdownButtons = document.querySelectorAll('.dropdown-menu button.dropdown-item');
+  dropdownButtons.forEach(button => {
+    button.setAttribute('autocomplete', 'off');
+    button.setAttribute('data-form-type', 'other');
+  });
+  
+  console.log('Password manager prevention attributes applied to dropdown menus');
 }

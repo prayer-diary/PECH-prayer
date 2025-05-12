@@ -76,13 +76,23 @@ async function initAuth() {
         // Reset the flag for future use
         window.restoreAuthFunctionality = false;
         
-        // FIRST CHECK: Look for our custom reset password parameter
+        // FIRST CHECK: Look for different types of recovery and reset parameters
         const params = new URLSearchParams(window.location.search);
         const hasResetParam = params.has('reset_password');
+        const hasAccessToken = params.has('access_token');
         const hasTypeParam = params.get('type') === 'recovery';
         
-        // If we have either reset parameter, this is a password reset flow
-        if (hasResetParam || hasTypeParam) {
+        // Also check hash for token info (handle both formats)
+        const hash = window.location.hash;
+        const hashHasToken = hash.includes('access_token=');
+        const hashHasRecovery = hash.includes('type=recovery');
+        
+        // Combined check for any recovery scenario
+        const isRecoveryFlow = hasResetParam || hasTypeParam || hasAccessToken || 
+                              (hashHasToken && hashHasRecovery);
+        
+        // If we have any recovery parameter, this is a password reset flow
+        if (isRecoveryFlow) {
             console.log("Password reset flow detected via URL parameters");
             
             // Clean up the URL immediately (for security)
@@ -90,7 +100,7 @@ async function initAuth() {
             window.history.replaceState({}, document.title, cleanUrl);
             
             // Wait a small time to ensure Supabase has processed the auth change
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise(resolve => setTimeout(resolve, 500));
             
             // Check if we now have a session (from the recovery token)
             const { data: { session } } = await getSessionSafely();
@@ -1233,13 +1243,13 @@ async function createSuperAdmin() {
         // First create the user
         const { data, error } = await supabase.auth.signUp({
             email: 'prayerdiary@pech.co.uk',
-            password: 'obfuscate',
+            password: '@Prayer@Diary@',
             options: {
                 data: {
                     full_name: 'Super Admin'
                 },
                 // Use the GitHub Pages URL for testing
-                emailRedirectTo: 'https://prayer.pech.co.uk'
+                emailRedirectTo: 'https:/prayer-diary.github.io/PECH-prayer'
             }
         });
         
@@ -1411,8 +1421,7 @@ async function handlePasswordReset(e) {
     try {
         // Use the Supabase resetPasswordForEmail function with a special reset page indicator
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            //redirectTo: window.location.origin + window.location.pathname + '?reset_password=true'
-			redirectTo: 'https://prayer.pech.co.uk?reset_password=true'
+            redirectTo: window.location.origin + window.location.pathname + '?reset_password=true'
         });
         
         if (error) throw error;
