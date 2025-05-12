@@ -1495,3 +1495,83 @@ body.small-photo .prayer-card .card-body [style*="float: left"] {
 .notification-permission-prompt.animate-out {
     animation: slideOutDown 0.3s ease-in forwards;
 }
+/* Additional CSS for improved login experience */
+
+/* Ensure the landing view has good spacing and looks nice when login modal is shown */
+#landing-view {
+    min-height: calc(100vh - 120px); /* Account for navbar */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+/* Prevent background scrolling when modal is open */
+body.modal-open {
+    overflow: hidden;
+    padding-right: 0 !important; /* Prevent Bootstrap's padding-right */
+}
+
+/* Fix for modal backdrop to ensure it covers the entire viewport */
+.modal-backdrop {
+    opacity: 0.7 !important; /* Slightly darker backdrop for better focus */
+}
+
+/* Make close button more visible in modals */
+.modal .btn-close {
+    background-color: rgba(255,255,255,0.8);
+    padding: 0.5rem;
+    opacity: 0.8;
+}
+
+.modal .btn-close:hover {
+    opacity: 1;
+    background-color: rgba(255,255,255,1);
+}
+
+/* Style the auth status message to look better on the landing page */
+#auth-status-message {
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+#auth-status-message .alert {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    border-radius: 10px;
+}
+
+/* Make modal content have some shadow for depth */
+.modal-content {
+    box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.2);
+    border: none;
+    border-radius: 12px;
+}
+
+/* Style for auth modal specifically */
+#auth-modal .modal-body {
+    padding: 2rem;
+}
+
+#auth-modal .modal-title {
+    font-weight: bold;
+    color: #483D8B;
+}
+
+/* Make form inputs look nicer */
+#auth-modal .form-control {
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+}
+
+#auth-modal .form-control:focus {
+    border-color: #483D8B;
+    box-shadow: 0 0 0 0.25rem rgba(72, 61, 139, 0.25);
+}
+
+/* Make auth buttons more prominent */
+#auth-modal .btn-primary {
+    padding: 0.75rem 1rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}

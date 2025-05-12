@@ -149,7 +149,7 @@ async function initAuth() {
     }
 }
 
-// Setup auth event listeners
+// Updated auth listeners to properly handle modal closing
 function setupAuthListeners() {
     // Track last navigation time for debouncing auth events
     let lastNavigationTime = 0;
@@ -177,34 +177,40 @@ function setupAuthListeners() {
             }
             
             if (event === 'SIGNED_IN') {
-            // Check if we already have this user logged in
-            if (currentUser && currentUser.id === session.user.id) {
-                console.log("Duplicate SIGNED_IN event detected - skipping processing");
-                return;
-            }
-            
-            currentUser = session.user;
-            // Update the stored token on sign in
-            window.authToken = session.access_token;
-            // Set last token refresh time
-            lastTokenRefresh = Date.now();
-            console.log("Access token updated on sign in");
-            await fetchUserProfile();
-            showLoggedInState();
-        } else if (event === 'SIGNED_OUT') {
-            currentUser = null;
-            userProfile = null;
-            showLoggedOutState();
-        } else if (event === 'TOKEN_REFRESHED') {
-            // Only log and update if we should refresh
-            if (shouldRefreshToken()) {
-                lastTokenRefresh = Date.now();
+                // Check if we already have this user logged in
+                if (currentUser && currentUser.id === session.user.id) {
+                    console.log("Duplicate SIGNED_IN event detected - skipping processing");
+                    return;
+                }
+                
+                currentUser = session.user;
+                // Update the stored token on sign in
                 window.authToken = session.access_token;
-                console.log("Access token updated on refresh");
-            } else {
-                console.log("Skipping unnecessary token refresh");
+                // Set last token refresh time
+                lastTokenRefresh = Date.now();
+                console.log("Access token updated on sign in");
+                await fetchUserProfile();
+                showLoggedInState();
+                
+                // Hide the auth modal if it's open
+                const authModal = bootstrap.Modal.getInstance(document.getElementById('auth-modal'));
+                if (authModal) {
+                    authModal.hide();
+                }
+            } else if (event === 'SIGNED_OUT') {
+                currentUser = null;
+                userProfile = null;
+                showLoggedOutState();
+            } else if (event === 'TOKEN_REFRESHED') {
+                // Only log and update if we should refresh
+                if (shouldRefreshToken()) {
+                    lastTokenRefresh = Date.now();
+                    window.authToken = session.access_token;
+                    console.log("Access token updated on refresh");
+                } else {
+                    console.log("Skipping unnecessary token refresh");
+                }
             }
-        }
         } finally {
             // Always reset the busy flag when done
             isAuthBusy = false;
@@ -231,14 +237,28 @@ function setupAuthListeners() {
         logoutBtn.addEventListener('click', logout);
     }
     
-    document.getElementById('auth-switch').addEventListener('click', toggleAuthMode);
+    // Create a new auth-switch element to replace the old one to avoid duplicate handlers
+    const switchLink = document.getElementById('auth-switch');
+    if (switchLink) {
+        const newSwitchLink = switchLink.cloneNode(true);
+        switchLink.parentNode.replaceChild(newSwitchLink, switchLink);
+        newSwitchLink.addEventListener('click', toggleAuthMode);
+    }
     
-    document.getElementById('auth-form').addEventListener('submit', handleAuth);
+    // Replace the auth form with a clone to remove old event listeners
+    const authForm = document.getElementById('auth-form');
+    if (authForm) {
+        const newAuthForm = authForm.cloneNode(true);
+        authForm.parentNode.replaceChild(newAuthForm, authForm);
+        newAuthForm.addEventListener('submit', handleAuth);
+    }
     
     // Set up forgotten password event handler
     const forgotPasswordLink = document.getElementById('forgot-password-link');
     if (forgotPasswordLink) {
-        forgotPasswordLink.addEventListener('click', (e) => {
+        const newForgotPasswordLink = forgotPasswordLink.cloneNode(true);
+        forgotPasswordLink.parentNode.replaceChild(newForgotPasswordLink, forgotPasswordLink);
+        newForgotPasswordLink.addEventListener('click', (e) => {
             e.preventDefault();
             openPasswordResetModal();
         });
@@ -247,22 +267,34 @@ function setupAuthListeners() {
     // Set up password reset form submission
     const passwordResetForm = document.getElementById('password-reset-form');
     if (passwordResetForm) {
-        passwordResetForm.addEventListener('submit', handlePasswordReset);
+        const newPasswordResetForm = passwordResetForm.cloneNode(true);
+        passwordResetForm.parentNode.replaceChild(newPasswordResetForm, passwordResetForm);
+        newPasswordResetForm.addEventListener('submit', handlePasswordReset);
     }
     
     // Set up new password form submission
     const newPasswordForm = document.getElementById('new-password-form');
     if (newPasswordForm) {
-        newPasswordForm.addEventListener('submit', handleNewPassword);
+        const newNewPasswordForm = newPasswordForm.cloneNode(true);
+        newPasswordForm.parentNode.replaceChild(newNewPasswordForm, newPasswordForm);
+        newNewPasswordForm.addEventListener('submit', handleNewPassword);
     }
     
-    // Close modal button
-    document.getElementById('auth-modal-close').addEventListener('click', () => {
-        document.getElementById('auth-modal').classList.remove('is-active');
-    });
+    // Close modal button - make sure it only hides the modal and doesn't reload
+    const closeBtn = document.getElementById('auth-modal-close');
+    if (closeBtn) {
+        const newCloseBtn = closeBtn.cloneNode(true);
+        closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+        newCloseBtn.addEventListener('click', () => {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('auth-modal'));
+            if (modal) {
+                modal.hide();
+            }
+        });
+    }
 }
 
-// Open auth modal for login or signup
+// Enhanced openAuthModal function to prevent background content from showing
 function openAuthModal(mode) {
     try {
         // Check global blocking flag first
@@ -309,6 +341,16 @@ function openAuthModal(mode) {
             return;
         }
         
+        // Make sure modal has static backdrop to prevent closing on outside click
+        modalElement.setAttribute('data-bs-backdrop', 'static');
+        
+        // Ensure any previous modal is disposed before creating a new one
+        const existingModal = bootstrap.Modal.getInstance(modalElement);
+        if (existingModal) {
+            existingModal.dispose();
+        }
+        
+        // Create new modal instance
         const modal = new bootstrap.Modal(modalElement);
         
         const title = document.getElementById('auth-modal-title');
@@ -358,9 +400,6 @@ function openAuthModal(mode) {
             if (signupNameInput) signupNameInput.setAttribute('required', '');
             if (confirmPasswordInput) confirmPasswordInput.setAttribute('required', '');
             if (signupHelpText) signupHelpText.classList.remove('d-none');
-            
-            // Let validation function handle the button state
-            // Do not disable by default as it prevents users from submitting even when all fields are filled
         }
         
         // Re-attach event listener for switch link - with null check
@@ -386,8 +425,25 @@ function openAuthModal(mode) {
         validateAuthForm();
         setTimeout(validateAuthForm, 100);
         
+        // Add event listener to the modal to prevent closing by Escape key
+        modalElement.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopPropagation();
+                return false;
+            }
+        });
+        
         // Show the modal
         modal.show();
+        
+        // When modal is shown, focus on the email field
+        modalElement.addEventListener('shown.bs.modal', function () {
+            const emailInput = document.getElementById('auth-email');
+            if (emailInput) {
+                emailInput.focus();
+            }
+        });
     } catch (error) {
         console.error("Error in openAuthModal:", error);
         // Fallback for critical error - reload the page
@@ -762,7 +818,7 @@ function resetLoginState() {
 // Flag to prevent multiple simultaneous logout attempts
 let logoutInProgress = false;
 
-// Logout function with enhanced error handling and force-logout capability
+// Updated logout function to prevent page reload
 async function logout() {
     // Prevent multiple calls
     if (logoutInProgress) {
@@ -832,15 +888,6 @@ async function logout() {
         
         if (!logoutInProgress) return; // Avoid duplicate execution
         
-        // Set a flag in sessionStorage to indicate logout just happened
-        // This will be checked on next login attempt
-        try {
-            sessionStorage.setItem('prayerDiaryForcedLogout', 'true');
-            sessionStorage.setItem('prayerDiaryLogoutTime', Date.now().toString());
-        } catch (e) {
-            console.warn("Couldn't set logout flag:", e);
-        }
-        
         try {
             // Always reset the local state regardless of API success
             console.log("Resetting local state...");
@@ -897,17 +944,14 @@ async function logout() {
                 console.warn("Error clearing auth storage:", storageError);
             }
             
-            // Update UI to logged out state
-            showLoggedOutState();
-            
             // Clear any app-specific state
             clearLocalAppState();
             
+            // Update UI to logged out state without page reload
+            showLoggedOutState();
+            
             // Dismiss the loading toast
             dismissToast(logoutToastId);
-            
-            // Show success message
-            //showToast('Logged Out', 'You have been successfully logged out', 'success', 3000);
             
             console.log("Logout procedure completed");
             
@@ -924,11 +968,6 @@ async function logout() {
             
             // Reset the flag
             logoutInProgress = false;
-            
-            // Last resort - offer page reload
-            if (confirm("Logout encountered an error. Reload the page?")) {
-                window.location.reload();
-            }
         }
     }
 }
@@ -1198,26 +1237,68 @@ function showRegistrationCompleteScreen() {
     }, 100);
 }
 
-// Update user interface for logged out state
+// Updated function to show logged out state without page reload
 function showLoggedOutState() {
-    document.querySelectorAll('.logged-out').forEach(el => el.classList.add('hidden')); // Keep logged-out elements hidden
-    document.querySelectorAll('.logged-in').forEach(el => el.classList.add('hidden'));
-    document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
+    // First hide all application content
+    document.querySelectorAll('.view-content').forEach(el => {
+        if (!el.classList.contains('d-none')) {
+            el.classList.add('d-none');
+        }
+    });
     
-    // Dispatch a custom event to notify other components about login state change
-    document.dispatchEvent(new CustomEvent('login-state-changed', { detail: { loggedIn: false }}));
-    
-    document.getElementById('landing-view').classList.add('d-none'); // Keep landing-view hidden
+    // Hide any views that might be open
     document.getElementById('app-views').classList.add('d-none');
     
-    // Re-enable navigation buttons
+    // Hide logged-in state elements
+    document.querySelectorAll('.logged-in').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('.editor-only').forEach(el => el.classList.add('hidden'));
+    
+    // Reset navigation selected states if any
+    document.querySelectorAll('.nav-link.active').forEach(el => {
+        el.classList.remove('active');
+    });
+    
+    // Dispatch a custom event to notify other components about login state change
+    document.dispatchEvent(new CustomEvent('login-state-changed', { 
+        detail: { loggedIn: false }
+    }));
+    
+    // Show landing view as a clean slate
+    const landingView = document.getElementById('landing-view');
+    landingView.classList.remove('d-none');
+    
+    // Clear any content in the landing view and add a nice welcome message
+    const statusMessage = document.getElementById('auth-status-message');
+    if (statusMessage) {
+        statusMessage.innerHTML = `
+            <div class="my-5 text-center">
+                <img src="img/logo.png" alt="PECH Prayer Diary Logo" class="mb-4" style="max-width: 120px;">
+                <h3 class="fw-bold mb-3">Welcome to PECH Prayer Diary</h3>
+                <p class="text-muted">Please log in to continue.</p>
+            </div>
+        `;
+    }
+    
+    // Re-enable navigation buttons if they were disabled
     document.querySelectorAll('.nav-link, .navbar-brand').forEach(link => {
         link.classList.remove('disabled');
         link.style.pointerEvents = '';
     });
     
-    // Only show the auth modal - no welcome screen
+    // Show the auth modal after a short delay to ensure DOM is ready
     setTimeout(() => {
+        // First check if there's already a modal being shown
+        const openModals = document.querySelectorAll('.modal.show');
+        openModals.forEach(modal => {
+            // Use Bootstrap's Modal API to hide any open modals
+            const modalInstance = bootstrap.Modal.getInstance(modal);
+            if (modalInstance) {
+                modalInstance.hide();
+            }
+        });
+        
+        // Now show the auth modal
         openAuthModal('login');
     }, 100);
 }
