@@ -1575,3 +1575,102 @@ body.modal-open {
     font-weight: 500;
     transition: all 0.2s ease;
 }
+/* Prayer Card Improvements CSS */
+
+/* Remove height restriction for prayer cards to allow them to expand with content */
+.prayer-card {
+    height: auto !important; /* Override fixed height */
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: none;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    border-radius: var(--bs-border-radius);
+    overflow: visible; /* Changed from hidden to allow content to expand */
+    margin-bottom: 1.5rem;
+}
+
+.prayer-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.75rem 1.5rem rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Improved styles for prayer card content */
+.prayer-card .card-body {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    padding: 1.25rem;
+}
+
+/* Default (Large Photo) layout */
+.prayer-card .card-body [style*="float: left"] {
+    float: none !important;
+    width: 100% !important;
+    margin-right: 0 !important;
+    margin-bottom: 1rem !important;
+    order: -1; /* Place image at top */
+}
+
+.prayer-card-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 0.75rem;
+    overflow: visible; /* Allow title to wrap normally */
+}
+
+.prayer-points-preview {
+    overflow: visible; /* Allow text to expand fully */
+    width: 100%; /* Ensure full width */
+    display: block; /* Ensure it expands vertically */
+}
+
+/* Small Photo Layout (side-by-side) */
+body.small-photo .prayer-card .card-body {
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+body.small-photo .prayer-card .card-body [style*="float: left"] {
+    width: 120px !important;
+    float: left !important;
+    margin-right: 15px !important;
+    margin-bottom: 0 !important;
+    order: 0; /* Reset order */
+}
+
+body.small-photo .prayer-card-title {
+    width: calc(100% - 135px); /* Account for image width + margin */
+}
+
+body.small-photo .prayer-points-preview {
+    width: calc(100% - 135px); /* Allow text to wrap around image */
+    float: right;
+}
+
+/* Clear float after content */
+.prayer-card .card-footer {
+    clear: both;
+}
+
+/* Ensure responsive behavior on smaller screens */
+@media (max-width: 767.98px) {
+    body.small-photo .prayer-card .card-body [style*="float: left"] {
+        width: 100px !important;
+    }
+    
+    body.small-photo .prayer-card-title,
+    body.small-photo .prayer-points-preview {
+        width: calc(100% - 115px);
+    }
+}
+
+@media (max-width: 575.98px) {
+    body.small-photo .prayer-card .card-body [style*="float: left"] {
+        width: 80px !important;
+    }
+    
+    body.small-photo .prayer-card-title,
+    body.small-photo .prayer-points-preview {
+        width: calc(100% - 95px);
+    }
+}
