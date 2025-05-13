@@ -1575,7 +1575,28 @@ body.modal-open {
     font-weight: 500;
     transition: all 0.2s ease;
 }
-/* Prayer Card Improvements CSS */
+/* Enhanced Prayer Card Link and HTML Content Styles */
+
+/* Make links visible in prayer cards */
+.prayer-card a {
+    color: #0d6efd; /* Bootstrap's default link color */
+    text-decoration: underline;
+}
+
+/* Link styles for dark mode */
+body.dark-mode .prayer-card a {
+    color: #8bb9fe; /* Lighter blue for dark mode */
+}
+
+/* Hover state for prayer card links */
+.prayer-card a:hover {
+    color: #0a58ca; /* Darker blue on hover */
+    text-decoration: underline;
+}
+
+body.dark-mode .prayer-card a:hover {
+    color: #afc9fe; /* Lighter blue on hover for dark mode */
+}
 
 /* Remove height restriction for prayer cards to allow them to expand with content */
 .prayer-card {
@@ -1628,6 +1649,28 @@ body.small-photo .prayer-card .card-body [style*="float: left"] {
     margin-bottom: 10px !important;
 }
 
+/* HTML content styling in prayer cards */
+.prayer-points-preview img {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Style lists in prayer points */
+.prayer-points-preview ul, 
+.prayer-points-preview ol {
+    padding-left: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Ensure paragraphs have proper spacing */
+.prayer-points-preview p {
+    margin-bottom: 0.75rem;
+}
+
+.prayer-points-preview p:last-child {
+    margin-bottom: 0;
+}
+
 /* Ensure responsive behavior on smaller screens */
 @media (max-width: 767.98px) {
     body.small-photo .prayer-card .card-body [style*="float: left"] {
@@ -1639,40 +1682,4 @@ body.small-photo .prayer-card .card-body [style*="float: left"] {
     body.small-photo .prayer-card .card-body [style*="float: left"] {
         width: 80px !important;
     }
-}
-/* Prayer Card Link Styles */
-
-/* Make links visible in prayer cards */
-.prayer-card a {
-    color: #0d6efd; /* Bootstrap's default link color */
-    text-decoration: underline;
-}
-
-/* Link styles for dark mode */
-body.dark-mode .prayer-card a {
-    color: #8bb9fe; /* Lighter blue for dark mode */
-}
-
-/* Hover state for prayer card links */
-.prayer-card a:hover {
-    color: #0a58ca; /* Darker blue on hover */
-    text-decoration: underline;
-}
-
-body.dark-mode .prayer-card a:hover {
-    color: #afc9fe; /* Lighter blue on hover for dark mode */
-}
-
-/* Ensure content in prayer cards is rendered as HTML */
-.prayer-points-preview p {
-    margin-bottom: 0.5rem;
-}
-
-/* Fix link color in content-container as well for consistency */
-.content-container a {
-    color: #0d6efd; /* Bootstrap's default link color */
-}
-
-body.dark-mode .content-container a {
-    color: #8bb9fe; /* Lighter blue for dark mode */
 }

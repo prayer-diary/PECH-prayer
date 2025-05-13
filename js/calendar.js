@@ -269,7 +269,8 @@ function setupDatePickerHandlers() {
     });
 }
 
-// Create a prayer card HTML
+// Fixed createPrayerCard function to show full topic text and proper HTML rendering
+
 function createPrayerCard(entry) {
     const imgSrc = entry.image_url || 'img/placeholder-profile.png';
     
@@ -277,22 +278,9 @@ function createPrayerCard(entry) {
     let prayerPointsDisplay = '';
     
     if (entry.prayer_points) {
-        // Check if we're dealing with a topic entry or regular member
         if (entry.type === 'topic') {
-            // For topics - same as before
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = entry.prayer_points;
-            
-            // Get a preview of the HTML content
-            if (tempDiv.textContent && tempDiv.textContent.length > 100) {
-                // If content is too long, get a portion of the HTML
-                // This keeps some formatting but truncates the content
-                const truncatedHTML = entry.prayer_points.substring(0, 250);
-                prayerPointsDisplay = truncatedHTML + '...';
-            } else {
-                // If content is short enough, display all HTML
-                prayerPointsDisplay = entry.prayer_points;
-            }
+            // For topics - display the full HTML content without truncation
+            prayerPointsDisplay = entry.prayer_points;
         } else {
             // For members - properly handle HTML in prayer points
             // Convert URLs and emails to actual links if they're not already
@@ -354,9 +342,6 @@ function convertLinksInText(text) {
     // Wrap in paragraph tags
     return `<p>${htmlText}</p>`;
 }
-
-// Prayer card listeners function is no longer needed since cards display all information directly
-
 // View prayer card details
 async function viewPrayerCard(userId) {
     await window.waitForAuthStability();
