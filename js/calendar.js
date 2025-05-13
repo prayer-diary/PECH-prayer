@@ -269,7 +269,7 @@ function setupDatePickerHandlers() {
     });
 }
 
-// Fixed createPrayerCard function to show full topic text and proper HTML rendering
+// Fixed createPrayerCard function to ensure proper absolute URLs in topic content
 
 function createPrayerCard(entry) {
     const imgSrc = entry.image_url || 'img/placeholder-profile.png';
@@ -280,7 +280,8 @@ function createPrayerCard(entry) {
     if (entry.prayer_points) {
         if (entry.type === 'topic') {
             // For topics - display the full HTML content without truncation
-            prayerPointsDisplay = entry.prayer_points;
+            // But ensure all links are properly formatted as absolute URLs
+            prayerPointsDisplay = ensureAbsoluteUrls(entry.prayer_points);
         } else {
             // For members - properly handle HTML in prayer points
             // Convert URLs and emails to actual links if they're not already
@@ -307,6 +308,40 @@ function createPrayerCard(entry) {
     `;
 }
 
+// Function to ensure all links in HTML content have absolute URLs
+function ensureAbsoluteUrls(htmlContent) {
+    if (!htmlContent) return '';
+    
+    // Create a temporary DOM element to parse the HTML
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = htmlContent;
+    
+    // Find all anchor tags
+    const links = tempDiv.querySelectorAll('a');
+    
+    // Process each link
+    links.forEach(link => {
+        const href = link.getAttribute('href');
+        
+        if (href) {
+            // Check if it's a relative URL (doesn't start with http://, https://, mailto:, tel:, etc.)
+            if (!href.match(/^(https?:|mailto:|tel:|ftp:|#|\/)/i)) {
+                // Add https:// prefix to make it absolute
+                link.setAttribute('href', 'https://' + href);
+            }
+            
+            // Add target="_blank" and rel attributes for external links
+            if (href.match(/^(https?:|ftp:)/i)) {
+                link.setAttribute('target', '_blank');
+                link.setAttribute('rel', 'noopener noreferrer');
+            }
+        }
+    });
+    
+    // Return the modified HTML
+    return tempDiv.innerHTML;
+}
+
 // Function to convert plain text URLs and emails to clickable links
 function convertLinksInText(text) {
     if (!text) return '';
@@ -315,8 +350,8 @@ function convertLinksInText(text) {
     const containsHTML = /<[a-z][\s\S]*>/i.test(text);
     
     if (containsHTML) {
-        // If it already has HTML, return as is
-        return text;
+        // If it already has HTML, process it to ensure absolute URLs
+        return ensureAbsoluteUrls(text);
     }
     
     // Convert line breaks to <br> tags
@@ -342,6 +377,7 @@ function convertLinksInText(text) {
     // Wrap in paragraph tags
     return `<p>${htmlText}</p>`;
 }
+
 // View prayer card details
 async function viewPrayerCard(userId) {
     await window.waitForAuthStability();
