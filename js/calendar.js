@@ -273,17 +273,13 @@ function setupDatePickerHandlers() {
 function createPrayerCard(entry) {
     const imgSrc = entry.image_url || 'img/placeholder-profile.png';
     
-    // Add badge based on type (member or topic)  **DEPRECATED
-    const typeBadge = entry.type === 'topic' 
-        ? '' 
-        : '';
-    
-    // Format prayer points: preserve HTML formatting for topics
+    // Format prayer points: preserve HTML formatting for both topics and members
     let prayerPointsDisplay = '';
     
     if (entry.prayer_points) {
+        // Check if we're dealing with a topic entry or regular member
         if (entry.type === 'topic') {
-            // For topics, preserve HTML formatting but limit length
+            // For topics - same as before
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = entry.prayer_points;
             
@@ -298,8 +294,9 @@ function createPrayerCard(entry) {
                 prayerPointsDisplay = entry.prayer_points;
             }
         } else {
-            // For members, display as is
-            prayerPointsDisplay = entry.prayer_points;
+            // For members - properly handle HTML in prayer points
+            // Convert URLs and emails to actual links if they're not already
+            prayerPointsDisplay = convertLinksInText(entry.prayer_points);
         }
     }
     
@@ -307,20 +304,55 @@ function createPrayerCard(entry) {
     return `
     <div class="col">
         <div class="card h-100 shadow prayer-card" data-entry-id="${entry.id}" data-entry-type="${entry.type || 'member'}">
-            ${typeBadge}
             <div class="card-body">
                 <div style="width: 120px; float: left; margin-right: 15px; margin-bottom: 0;">
                     <img src="${imgSrc}" class="img-fluid rounded prayer-profile-img" alt="${entry.name}">
                 </div>
                 <h5 class="card-title prayer-card-title mb-2">${entry.name}</h5>
                 <div class="card-text prayer-points-preview">
-                    ${entry.type === 'topic' ? prayerPointsDisplay : (prayerPointsDisplay ? `<p>${prayerPointsDisplay}</p>` : '')}
+                    ${entry.type === 'topic' ? prayerPointsDisplay : (prayerPointsDisplay ? prayerPointsDisplay : '')}
                 </div>
                 <div style="clear: both;"></div>
             </div>
         </div>
     </div>
     `;
+}
+
+// Function to convert plain text URLs and emails to clickable links
+function convertLinksInText(text) {
+    if (!text) return '';
+    
+    // First check if the text already contains HTML tags
+    const containsHTML = /<[a-z][\s\S]*>/i.test(text);
+    
+    if (containsHTML) {
+        // If it already has HTML, return as is
+        return text;
+    }
+    
+    // Convert line breaks to <br> tags
+    let htmlText = text.replace(/\n/g, '<br>');
+    
+    // URL regex pattern - matches http, https, ftp URLs
+    const urlRegex = /(https?:\/\/|ftp:\/\/|www\.)[^\s\r\n<]+/gi;
+    
+    // Email regex pattern
+    const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/gi;
+    
+    // Replace URLs with anchor tags
+    htmlText = htmlText.replace(urlRegex, function(url) {
+        const href = url.startsWith('www.') ? 'http://' + url : url;
+        return `<a href="${href}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+    });
+    
+    // Replace emails with mailto links
+    htmlText = htmlText.replace(emailRegex, function(email) {
+        return `<a href="mailto:${email}">${email}</a>`;
+    });
+    
+    // Wrap in paragraph tags
+    return `<p>${htmlText}</p>`;
 }
 
 // Prayer card listeners function is no longer needed since cards display all information directly
