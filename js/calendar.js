@@ -758,15 +758,60 @@ async function updateUserMonths(userId, months) {
 function setupEventListeners() {
     // Search input
     const searchInput = document.getElementById('member-search');
-    searchInput.addEventListener('input', () => {
-        filterAndDisplayUsers(searchInput.value);
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            filterAndDisplayUsers(searchInput.value);
+        });
+    }
+    
+    // Set up tab event listeners properly
+    const memberListTabs = document.querySelectorAll('#memberListTab button');
+    memberListTabs.forEach(tab => {
+        // Replace with a new element to clean up any old event listeners
+        const newTab = tab.cloneNode(true);
+        tab.parentNode.replaceChild(newTab, tab);
+        
+        // Add the click event listener
+        newTab.addEventListener('click', function() {
+            // Clear search when switching tabs
+            if (searchInput) {
+                searchInput.value = '';
+            }
+            
+            // Force display update when tab is clicked
+            filterAndDisplayUsers();
+            
+            // If this is the allocated tab, make sure its content is visible
+            if (this.id === 'allocated-tab') {
+                // Get the tab pane
+                const allocatedPane = document.getElementById('allocated-members');
+                if (allocatedPane) {
+                    // Make sure the tab pane is visible
+                    allocatedPane.classList.add('show', 'active');
+                }
+                
+                // Show the members list
+                const allocatedMembersList = document.getElementById('allocated-members-list');
+                if (allocatedMembersList) {
+                    allocatedMembersList.style.display = 'block';
+                }
+            }
+        });
     });
     
-    // Clear search when switching tabs
-    document.querySelectorAll('#memberListTab button').forEach(tab => {
-        tab.addEventListener('click', () => {
-            searchInput.value = '';
+    // Also add Bootstrap's shown.bs.tab event listener
+    document.querySelectorAll('#memberListTab button[data-bs-toggle="tab"]').forEach(tabEl => {
+        tabEl.addEventListener('shown.bs.tab', function(event) {
+            // When a tab is shown via Bootstrap, refresh the display
             filterAndDisplayUsers();
+            
+            // For the allocated tab specifically
+            if (this.id === 'allocated-tab') {
+                const allocatedList = document.getElementById('allocated-members-list');
+                if (allocatedList) {
+                    allocatedList.style.display = 'block';
+                }
+            }
         });
     });
 }
