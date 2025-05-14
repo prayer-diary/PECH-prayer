@@ -436,9 +436,9 @@ async function deleteTopic(topicId) {
         }
         
         // Refresh the page after a short delay
-        setTimeout(() => {
-            window.location.reload();
-        }, 1500);
+        //setTimeout(() => {
+        //    window.location.reload();
+        //}, 1500);
         
     } catch (error) {
         console.error('Error deleting topic:', error);
