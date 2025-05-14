@@ -142,12 +142,38 @@ function handleTopicImageSelection(e) {
     validateTopicForm();
 }
 
-// Call the topic management Edge Function
+// Fix for topics.js - Replace the callTopicEdgeFunction method with this improved version
+
 async function callTopicEdgeFunction(action, data) {
-	// Get the auth token
-    const authToken = window.authToken || await getAuthToken();
-	console.log('In callTopicEdgeFunction');
+    // Wait for auth stability first
+    await window.waitForAuthStability();
+    
     try {
+        // Get a fresh authentication token
+        let authToken;
+        
+        try {
+            // First try to get the cached token from window.authToken
+            authToken = window.authToken;
+            
+            // If no token exists or it seems invalid, refresh it
+            if (!authToken || authToken === 'undefined' || authToken === 'null') {
+                console.log('No valid auth token found, fetching fresh token');
+                const { data } = await supabase.auth.getSession();
+                if (data?.session?.access_token) {
+                    authToken = data.session.access_token;
+                    // Update the global token
+                    window.authToken = authToken;
+                } else {
+                    throw new Error('Failed to get valid auth token');
+                }
+            }
+        } catch (tokenError) {
+            console.error('Error getting auth token:', tokenError);
+            // Final attempt - force a new token by signing out and back in
+            throw new Error('Authentication token error - please try logging out and logging back in');
+        }
+        
         const functionUrl = `${SUPABASE_URL}/functions/v1/topic-management`;
         
         // Add user ID to the request data
@@ -156,7 +182,9 @@ async function callTopicEdgeFunction(action, data) {
             data,
             userId: getUserId()
         };
-        console.log(`Calling topic edge function for ${functionUrl}`);
+        
+        console.log(`Calling topic edge function at ${functionUrl}`);
+        
         const response = await fetch(functionUrl, {
             method: 'POST',
             headers: {
@@ -167,7 +195,16 @@ async function callTopicEdgeFunction(action, data) {
         });
         
         if (!response.ok) {
-            const errorText = await response.text();
+            let errorText;
+            try {
+                // Try to parse as JSON first
+                const errorJson = await response.json();
+                errorText = JSON.stringify(errorJson);
+            } catch (e) {
+                // If not JSON, get as text
+                errorText = await response.text();
+            }
+            
             throw new Error(`Edge function error: ${response.status} - ${errorText}`);
         }
         
