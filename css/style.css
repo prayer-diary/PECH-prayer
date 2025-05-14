@@ -1683,3 +1683,60 @@ body.small-photo .prayer-card .card-body [style*="float: left"] {
         width: 80px !important;
     }
 }
+/* Add these CSS styles to support the enhanced topic display */
+
+/* Style for the day frequency selector */
+.day-frequency-selector {
+    margin-bottom: 0.5rem;
+    width: 100%;
+}
+
+/* Improved badge styling for special frequencies */
+.day-badge-inline[data-day="90"] {
+    background-color: #9c27b0 !important; /* Purple for daily */
+}
+
+.day-badge-inline[data-day="91"],
+.day-badge-inline[data-day="92"],
+.day-badge-inline[data-day="93"],
+.day-badge-inline[data-day="94"],
+.day-badge-inline[data-day="95"],
+.day-badge-inline[data-day="96"],
+.day-badge-inline[data-day="97"] {
+    background-color: #2196f3 !important; /* Blue for days of week */
+}
+
+/* Adjust spacing in topic cards to fit the new selector */
+.topic-bottom-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.topic-bottom-row button {
+    margin-top: 0.5rem;
+}
+
+/* When month selector is disabled, make it visually distinct */
+.month-selector:disabled {
+    opacity: 0.6;
+    background-color: #f5f5f5;
+}
+
+/* Responsive adjustments for smaller screens */
+@media (min-width: 768px) {
+    .topic-bottom-row {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+    
+    .day-frequency-selector,
+    .month-selector {
+        flex: 1;
+        min-width: 150px;
+    }
+    
+    .topic-bottom-row button {
+        margin-top: 0;
+    }
+}

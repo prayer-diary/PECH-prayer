@@ -491,7 +491,7 @@ function filterAndDisplayTopics(searchTerm = '') {
     displayTopicList(allocatedTopics, 'allocated-topics-list', true);
 }
 
-// Display a list of topics in the specified container
+// Updated function to display topic list with enhanced day selection
 function displayTopicList(topics, containerId, isAllocated) {
     const container = document.getElementById(containerId);
     
@@ -510,6 +510,9 @@ function displayTopicList(topics, containerId, isAllocated) {
     topics.forEach(topic => {
         const imgSrc = topic.topic_image_url || 'img/placeholder-profile.png';
         
+        // Get formatted text for the day assignment
+        const dayAssignmentText = getFormattedDayText(topic.pray_day);
+        
         if (isAllocated) {
             // Template for assigned topics
             html += `
@@ -523,10 +526,21 @@ function displayTopicList(topics, containerId, isAllocated) {
                     </div>
                 </div>
                 <div class="topic-badge-row">
-                    <span class="badge bg-primary day-badge-inline">Day ${topic.pray_day}</span>
+                    <span class="badge bg-primary day-badge-inline">${dayAssignmentText}</span>
                 </div>
                 <div class="topic-bottom-row">
-                    <select class="form-select month-selector" data-topic-id="${topic.id}">
+                    <select class="form-select day-frequency-selector" data-topic-id="${topic.id}">
+                        <option value="custom" ${topic.pray_day >= 1 && topic.pray_day <= 31 ? 'selected' : ''}>Custom Day</option>
+                        <option value="90" ${topic.pray_day === 90 ? 'selected' : ''}>Daily</option>
+                        <option value="91" ${topic.pray_day === 91 ? 'selected' : ''}>Sunday</option>
+                        <option value="92" ${topic.pray_day === 92 ? 'selected' : ''}>Monday</option>
+                        <option value="93" ${topic.pray_day === 93 ? 'selected' : ''}>Tuesday</option>
+                        <option value="94" ${topic.pray_day === 94 ? 'selected' : ''}>Wednesday</option>
+                        <option value="95" ${topic.pray_day === 95 ? 'selected' : ''}>Thursday</option>
+                        <option value="96" ${topic.pray_day === 96 ? 'selected' : ''}>Friday</option>
+                        <option value="97" ${topic.pray_day === 97 ? 'selected' : ''}>Saturday</option>
+                    </select>
+                    <select class="form-select month-selector" data-topic-id="${topic.id}" ${topic.pray_day >= 90 ? 'disabled' : ''}>
                         <option value="0" ${topic.pray_months === 0 ? 'selected' : ''}>All months</option>
                         <option value="1" ${topic.pray_months === 1 ? 'selected' : ''}>Odd months</option>
                         <option value="2" ${topic.pray_months === 2 ? 'selected' : ''}>Even months</option>
@@ -550,6 +564,17 @@ function displayTopicList(topics, containerId, isAllocated) {
                     </div>
                 </div>
                 <div class="topic-bottom-row">
+                    <select class="form-select day-frequency-selector" data-topic-id="${topic.id}">
+                        <option value="custom" selected>Custom Day</option>
+                        <option value="90">Daily</option>
+                        <option value="91">Sunday</option>
+                        <option value="92">Monday</option>
+                        <option value="93">Tuesday</option>
+                        <option value="94">Wednesday</option>
+                        <option value="95">Thursday</option>
+                        <option value="96">Friday</option>
+                        <option value="97">Saturday</option>
+                    </select>
                     <select class="form-select month-selector" data-topic-id="${topic.id}">
                         <option value="0" ${topic.pray_months === 0 ? 'selected' : ''}>All months</option>
                         <option value="1" ${topic.pray_months === 1 ? 'selected' : ''}>Odd months</option>
@@ -574,6 +599,29 @@ function displayTopicList(topics, containerId, isAllocated) {
         });
     });
     
+    // Add event listeners to day frequency selectors
+    container.querySelectorAll('.day-frequency-selector').forEach(select => {
+        select.addEventListener('change', function() {
+            const topicId = this.dataset.topicId;
+            const value = parseInt(this.value);
+            
+            // Find the corresponding month selector
+            const monthSelector = this.parentElement.querySelector('.month-selector');
+            
+            // Special values (90-97) disable month selector as they always apply
+            if (value >= 90) {
+                monthSelector.disabled = true;
+                monthSelector.value = "0"; // Set to "All months" but it won't be used
+                
+                // If "custom" is not selected, directly update the pray_day value
+                updateTopicDayFrequency(topicId, value);
+            } else {
+                // Regular day-of-month selection - enable month selector
+                monthSelector.disabled = false;
+            }
+        });
+    });
+    
     // Add event listeners to month selectors
     container.querySelectorAll('.month-selector').forEach(select => {
         select.addEventListener('change', function() {
@@ -584,18 +632,87 @@ function displayTopicList(topics, containerId, isAllocated) {
     });
 }
 
-// Assign a topic to the selected day
-async function assignTopicToDay(topicId) {
-    const selectedDay = parseInt(document.getElementById('topics-selected-day').textContent);
-    
-    if (isNaN(selectedDay) || selectedDay < 1 || selectedDay > 31) {
-        showNotification('Warning', 'Please select a valid day first', 'warning');
-        return;
+// New function to get formatted text for day assignment
+function getFormattedDayText(prayDay) {
+    if (prayDay === 90) {
+        return "Daily";
+    } else if (prayDay >= 91 && prayDay <= 97) {
+        const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        return daysOfWeek[prayDay - 91];
+    } else {
+        return `Day ${prayDay}`;
     }
-	
-	 await window.waitForAuthStability();
+}
+
+// New function to update topic day frequency
+async function updateTopicDayFrequency(topicId, dayValue) {
+    await window.waitForAuthStability();
+    try {
+        // For special values (90-97), we also need to set pray_months=0
+        let updateData = { pray_day: dayValue };
+        
+        // If it's a special value (daily or day of week), set pray_months to 0
+        if (dayValue >= 90) {
+            updateData.pray_months = 0;
+        }
+        
+        // Update the database
+        const { data, error } = await supabase
+            .from('prayer_topics')
+            .update(updateData)
+            .eq('id', topicId);
+            
+        if (error) throw error;
+        
+        // Update local data
+        const topicIndex = allTopics.findIndex(topic => topic.id === topicId);
+        if (topicIndex >= 0) {
+            allTopics[topicIndex].pray_day = dayValue;
+            if (dayValue >= 90) {
+                allTopics[topicIndex].pray_months = 0;
+            }
+        }
+        
+        // Refresh display
+        filterAndDisplayTopics();
+        
+        showNotification('Success', `Topic frequency updated to ${getFormattedDayText(dayValue)}`, 'success');
+        
+    } catch (error) {
+        console.error('Error updating topic day frequency:', error);
+        showNotification('Error', `Failed to update topic frequency: ${error.message}`, 'error');
+    }
+}
+
+// Modified assignTopicToDay function to handle new day selection types
+async function assignTopicToDay(topicId) {
+    await window.waitForAuthStability();
     
     try {
+        // Check if we have a special day frequency set
+        const topicCard = document.querySelector(`.topic-card[data-topic-id="${topicId}"]`);
+        if (!topicCard) {
+            showNotification('Error', 'Topic card element not found', 'error');
+            return;
+        }
+        
+        const dayFrequencySelector = topicCard.querySelector('.day-frequency-selector');
+        const dayFrequencyValue = parseInt(dayFrequencySelector.value);
+        
+        // If a special value (daily or day of week) is selected, use that directly
+        if (dayFrequencyValue >= 90) {
+            await updateTopicDayFrequency(topicId, dayFrequencyValue);
+            return;
+        }
+        
+        // Otherwise, it's a custom day selection, so use the selected day from the calendar
+        const selectedDay = parseInt(document.getElementById('topics-selected-day').textContent);
+        
+        if (isNaN(selectedDay) || selectedDay < 1 || selectedDay > 31) {
+            showNotification('Warning', 'Please select a valid day first', 'warning');
+            return;
+        }
+        
         // Store the selected day so it stays highlighted
         selectedTopicDay = selectedDay;
         

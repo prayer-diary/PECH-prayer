@@ -32,7 +32,9 @@ function getEffectiveDate() {
     return window.selectedPrayerDate || testDate || new Date();
 }
 
-// Load prayer calendar entries
+// Modification to loadPrayerCalendar function in calendar.js
+// This adds support for daily topics (pray_day=90) and day-of-week topics (pray_day=91-97)
+
 async function loadPrayerCalendar() {
     if (!isApproved()) return;
 	
@@ -48,6 +50,11 @@ async function loadPrayerCalendar() {
         const currentDay = effectiveDate.getDate();
         const currentMonth = effectiveDate.getMonth() + 1; // JavaScript months are 0-indexed
         const isOddMonth = currentMonth % 2 === 1;
+        
+        // Calculate day of week (0-6, where 0 is Sunday)
+        const dayOfWeek = effectiveDate.getDay();
+        // Map to our 91-97 range (Sunday = 91)
+        const dayOfWeekValue = 91 + dayOfWeek;
         
         // Update the date display with stylish container
         const dateStr = formatDate(effectiveDate, true); // Use long format for heading
@@ -89,11 +96,14 @@ async function loadPrayerCalendar() {
             
         if (userError) throw userError;
         
-        // Get topics with pray_day matching the current day
+        // Get topics matching ANY of these conditions:
+        // 1. pray_day matching the current day of month (1-31) AND correct month pattern
+        // 2. pray_day = 90 (daily topics)
+        // 3. pray_day matching the current day of week (91-97)
         const { data: topicData, error: topicError } = await supabase
             .from('prayer_topics')
             .select('*')
-            .eq('pray_day', currentDay)
+            .or(`pray_day.eq.${currentDay},pray_day.eq.90,pray_day.eq.${dayOfWeekValue}`)
             .or(`pray_months.eq.0,pray_months.eq.${isOddMonth ? 1 : 2}`)
             .order('topic_title', { ascending: true });
             
@@ -111,16 +121,38 @@ async function loadPrayerCalendar() {
             type: 'member'
         }));
         
-        // Map topics directly
-        const topicsToDisplay = topicData.map(topic => ({
-            id: topic.id,
-            day_of_month: topic.pray_day,
-            name: topic.topic_title,
-            image_url: topic.topic_image_url,
-            prayer_points: topic.topic_text,
-            is_user: false,
-            type: 'topic'
-        }));
+        // Map topics directly, filtering to ensure we show the correct topics
+        // based on the current date and their assignment rules
+        const topicsToDisplay = topicData
+            // Additional filter to ensure topics with day-of-month assignments 
+            // follow month pattern rules correctly
+            .filter(topic => {
+                // Daily topics (90) are always included
+                if (topic.pray_day === 90) return true;
+                
+                // Day of week topics (91-97) are always included when they match the current day
+                if (topic.pray_day >= 91 && topic.pray_day <= 97 && topic.pray_day === dayOfWeekValue) return true;
+                
+                // For regular day-of-month topics (1-31), check month pattern
+                if (topic.pray_day === currentDay) {
+                    // If pray_months is 0, show for all months
+                    if (topic.pray_months === 0) return true;
+                    
+                    // Otherwise, check if it matches the odd/even month pattern
+                    return (isOddMonth && topic.pray_months === 1) || (!isOddMonth && topic.pray_months === 2);
+                }
+                
+                return false;
+            })
+            .map(topic => ({
+                id: topic.id,
+                day_of_month: topic.pray_day,
+                name: topic.topic_title,
+                image_url: topic.topic_image_url,
+                prayer_points: topic.topic_text,
+                is_user: false,
+                type: 'topic'
+            }));
         
         // Combine both types of entries for checking if any exist
         const prayerEntries = [...membersToDisplay, ...topicsToDisplay];
