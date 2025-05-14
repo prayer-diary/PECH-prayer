@@ -856,12 +856,31 @@ async function viewTopicCard(topicId) {
 
 // Initialize topics on page load
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize topics functionality when the "other-tab" (now "Assign Topics") is clicked
-    document.getElementById('other-tab').addEventListener('click', () => {
-        initTopics();
-    });
+    // Find the topics tab
+    const topicsTab = document.getElementById('other-tab');
     
-    // Check for state restoration after page refresh
+    if (topicsTab) {
+        // Listen for Bootstrap's tab events
+        topicsTab.addEventListener('shown.bs.tab', function (event) {
+            initTopics();
+        });
+        
+        // Also listen for direct click (backup method)
+        topicsTab.addEventListener('click', function() {
+            setTimeout(() => {
+                initTopics();
+            }, 100);
+        });
+    }
+    
+    // Also check on document ready if the topics tab is already active
+    setTimeout(() => {
+        if (topicsTab && topicsTab.classList.contains('active')) {
+            initTopics();
+        }
+    }, 500);
+    
+    // Rest of the existing code for state restoration...
     if (sessionStorage.getItem('topicSaved') === 'true' || 
         sessionStorage.getItem('topicDeleted') === 'true' || 
         sessionStorage.getItem('topicAssigned') === 'true' || 
@@ -901,7 +920,6 @@ document.addEventListener('DOMContentLoaded', () => {
             showView('manage-calendar-view');
             
             // Then activate the Topics tab
-            const topicsTab = document.getElementById('other-tab');
             if (topicsTab) {
                 // Use Bootstrap's tab API to activate the tab
                 const tabInstance = new bootstrap.Tab(topicsTab);
