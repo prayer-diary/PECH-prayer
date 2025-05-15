@@ -31,13 +31,21 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Preview button event listener
-    const previewBtn = document.getElementById('preview-pdf-btn');
-    if (previewBtn) {
-        previewBtn.addEventListener('click', function() {
-            generatePreview();
+    // Cover page checkbox event listener to update preview
+    const includeCoverCheckbox = document.getElementById('include-cover-pages');
+    if (includeCoverCheckbox) {
+        includeCoverCheckbox.addEventListener('change', function() {
+            generatePreview(); // Regenerate preview when cover page option changes
         });
     }
+    
+    // Preview button event listener - REMOVED as per requirement
+    // const previewBtn = document.getElementById('preview-pdf-btn');
+    // if (previewBtn) {
+    //     previewBtn.addEventListener('click', function() {
+    //         generatePreview();
+    //     });
+    // }
     
     // Generate PDF button event listener
     const generateBtn = document.getElementById('generate-pdf-btn');
@@ -87,6 +95,12 @@ async function initPrintCalendarView() {
         dateRangeSelect.value = 'all';
     }
     
+    // Make sure the cover page checkbox is checked by default
+    const includeCoverCheckbox = document.getElementById('include-cover-pages');
+    if (includeCoverCheckbox) {
+        includeCoverCheckbox.checked = true;
+    }
+    
     // Generate a preview
     generatePreview();
 }
@@ -122,8 +136,12 @@ async function generatePreview() {
             return;
         }
         
+        // Check if cover page is enabled
+        const includeCoverCheckbox = document.getElementById('include-cover-pages');
+        const includeCover = includeCoverCheckbox ? includeCoverCheckbox.checked : true;
+        
         // Generate the preview HTML - show all cards in preview
-        const previewHTML = generatePrintHTML(prayerCards);
+        const previewHTML = generatePrintHTML(prayerCards, includeCover);
         
         // Base URL for resolving relative paths
         const baseURL = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
@@ -218,18 +236,18 @@ async function generatePreview() {
                                 font-family: ${fontFamily} !important;
                             }
                             .print-image-container {
-                            margin-right: 5mm;
-                            flex-shrink: 0;
-                            display: flex;
+                                margin-right: 5mm;
+                                flex-shrink: 0;
+                                display: flex;
                                 align-items: flex-start;
                             }
                             .print-profile-image {
-                            max-width: 35mm;
-                            max-height: 50mm;
-                            object-fit: contain;
-                            border-radius: 3mm;
+                                max-width: 35mm;
+                                max-height: 50mm;
+                                object-fit: contain;
+                                border-radius: 3mm;
                                 border: 1px solid #eee;
-                    }
+                            }
                             .print-prayer-points {
                                 flex: 1;
                                 font-size: 10pt;
@@ -245,8 +263,9 @@ async function generatePreview() {
                                 left: 10mm;
                                 right: 10mm;
                                 text-align: center;
-                                font-size: 8pt;
-                                color: #999;
+                                font-size: 14pt;
+                                font-weight: bold;
+                                color: #333;
                                 font-family: ${fontFamily} !important;
                             }
                             .print-date {
@@ -258,6 +277,34 @@ async function generatePreview() {
                             }
                             h1, h2, h3, h4, h5, h6, p, span, div {
                                 font-family: ${fontFamily} !important;
+                            }
+                            /* Cover page styles */
+                            .cover-page {
+                                display: flex;
+                                flex-direction: column;
+                                align-items: center;
+                                justify-content: center;
+                                height: 100%;
+                                text-align: center;
+                                border: 10px solid #000;
+                                border-radius: 10mm;
+                                padding: 20mm;
+                                box-sizing: border-box;
+                            }
+                            .cover-logo {
+                                width: 70mm;
+                                max-height: 70mm;
+                                margin-bottom: 10mm;
+                            }
+                            .cover-title {
+                                font-size: 24pt;
+                                font-weight: bold;
+                                margin-bottom: 5mm;
+                                color: #483D8B;
+                            }
+                            .cover-church-name {
+                                font-size: 18pt;
+                                margin-bottom: 10mm;
                             }
                         </style>
                         <script>
@@ -345,8 +392,12 @@ async function generatePDF() {
             return;
         }
         
+        // Check if cover page is enabled
+        const includeCoverCheckbox = document.getElementById('include-cover-pages');
+        const includeCover = includeCoverCheckbox ? includeCoverCheckbox.checked : true;
+        
         // Generate the full HTML for all pages
-        const printHTML = generatePrintHTML(prayerCards);
+        const printHTML = generatePrintHTML(prayerCards, includeCover);
         
         // Get selected font family
         const fontFamilySelect = document.getElementById('print-font-family');
@@ -495,8 +546,9 @@ async function generatePDF() {
                         left: 10mm;
                         right: 10mm;
                         text-align: center;
-                        font-size: 8pt;
-                        color: #999;
+                        font-size: 14pt;
+                        font-weight: bold;
+                        color: #333;
                         font-family: ${fontFamily} !important;
                     }
                     .print-date {
@@ -508,6 +560,34 @@ async function generatePDF() {
                     }
                     h1, h2, h3, h4, h5, h6, p, span, div {
                         font-family: ${fontFamily} !important;
+                    }
+                    /* Cover page styles */
+                    .cover-page {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        height: 100%;
+                        text-align: center;
+                        border: 10px solid #000;
+                        border-radius: 10mm;
+                        padding: 20mm;
+                        box-sizing: border-box;
+                    }
+                    .cover-logo {
+                        width: 70mm;
+                        max-height: 70mm;
+                        margin-bottom: 10mm;
+                    }
+                    .cover-title {
+                        font-size: 24pt;
+                        font-weight: bold;
+                        margin-bottom: 5mm;
+                        color: #483D8B;
+                    }
+                    .cover-church-name {
+                        font-size: 18pt;
+                        margin-bottom: 10mm;
                     }
                 </style>
                 <script>
@@ -534,7 +614,7 @@ async function generatePDF() {
                         });
                         
                         // Fix any broken images
-                        document.querySelectorAll('.print-profile-image').forEach(img => {
+                        document.querySelectorAll('.print-profile-image, .cover-logo').forEach(img => {
                             img.onerror = function() { handleImageError(this); };
                         });
                         
@@ -718,7 +798,7 @@ async function getPrayerCards() {
 }
 
 // Generate the HTML for the printable pages
-function generatePrintHTML(prayerCards) {
+function generatePrintHTML(prayerCards, includeCover = true) {
     // Sort cards by day if available
     prayerCards.sort((a, b) => {
         if (a.day === null && b.day === null) return 0;
@@ -728,6 +808,19 @@ function generatePrintHTML(prayerCards) {
     });
     
     let html = '';
+    
+    // Add cover page if enabled
+    if (includeCover) {
+        html += `
+        <div class="print-page">
+            <div class="cover-page">
+                <img src="img/logo.png" class="cover-logo" alt="Pelsall Evangelical Church Logo">
+                <h1 class="cover-title">Prayer Diary</h1>
+                <h2 class="cover-church-name">Pelsall Evangelical Church</h2>
+            </div>
+        </div>
+        `;
+    }
     
     // Current date for footer
     const today = new Date();
@@ -816,7 +909,7 @@ function generatePrintHTML(prayerCards) {
                     `;
                 }
                 
-                // Add simple day number in the footer
+                // Add day number in the footer - now larger and bold as per requirements
                 html += `
                     <div class="print-footer">
                         Day ${day}

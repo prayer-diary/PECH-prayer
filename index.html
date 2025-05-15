@@ -915,62 +915,69 @@
             <div id="print-calendar-view" class="view-content d-none">
                 <h3 class="fw-bold mb-4">Print Prayer Diary</h3>
                 <div class="row">
-                    <div class="col-md-4 mb-4">
-                        <div class="card shadow">
-                            <div class="card-header bg-primary text-white py-2">
-                                <h5 class="card-title mb-0">Print Options</h5>
-                            </div>
-                            <div class="card-body">
-                                <form id="print-options-form">
-                                    <div class="mb-3">
-                                        <label class="form-label">Date Range</label>
-                                        <select class="form-select" id="print-date-range">
-                                            <option value="current-month">Current Month</option>
-                                            <option value="custom">Custom Range</option>
-                                            <option value="all">All Prayer Cards</option>
-                                        </select>
-                                    </div>
-                                    
-                                    <div id="custom-date-range" class="d-none">
-                                        <div class="mb-3">
-                                            <label for="print-start-date" class="form-label">Start Date</label>
-                                            <input type="date" class="form-control" id="print-start-date">
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="print-end-date" class="form-label">End Date</label>
-                                            <input type="date" class="form-control" id="print-end-date">
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="mb-3">
-                                    <label class="form-label">Font Family</label>
-                                    <select class="form-select" id="print-font-family">
-                                    <option value="Arial, sans-serif">Arial</option>
-                                    <option value="'Times New Roman', serif">Times New Roman</option>
-                                    <option value="Verdana, sans-serif">Verdana</option>
-                                    <option value="Georgia, serif">Georgia</option>
-                                    <option value="'Courier New', monospace">Courier New</option>
-                                        <option value="'Calibri', sans-serif">Calibri</option>
-                                            <option value="'Cambria', serif">Cambria</option>
-                                            <option value="'Tahoma', sans-serif">Tahoma</option>
-                                            <option value="'Garamond', serif">Garamond</option>
-                                            <option value="'Segoe UI', sans-serif">Segoe UI</option>
-                                            <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
-                                        </select>
-                                    </div>
-                                    
-                                    <div class="d-grid gap-2">
-                                        <button type="button" class="btn btn-primary" id="preview-pdf-btn">
-                                            <i class="bi bi-eye me-1"></i> Preview
-                                        </button>
-                                        <button type="button" class="btn btn-success" id="generate-pdf-btn">
-                                            <i class="bi bi-printer me-1"></i> Generate PDF
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
+					<div class="col-md-4 mb-4">
+						<div class="card shadow">
+							<div class="card-header bg-primary text-white py-2">
+								<h5 class="card-title mb-0">Print Options</h5>
+							</div>
+							<div class="card-body">
+								<form id="print-options-form">
+									<div class="mb-3">
+										<label class="form-label">Date Range</label>
+										<select class="form-select" id="print-date-range">
+											<option value="current-month">Current Month</option>
+											<option value="custom">Custom Range</option>
+											<option value="all">All Prayer Cards</option>
+										</select>
+									</div>
+									
+									<div id="custom-date-range" class="d-none">
+										<div class="mb-3">
+											<label for="print-start-date" class="form-label">Start Date</label>
+											<input type="date" class="form-control" id="print-start-date">
+										</div>
+										<div class="mb-3">
+											<label for="print-end-date" class="form-label">End Date</label>
+											<input type="date" class="form-control" id="print-end-date">
+										</div>
+									</div>
+									
+									<div class="mb-3">
+										<label class="form-label">Font Family</label>
+										<select class="form-select" id="print-font-family">
+											<option value="Arial, sans-serif">Arial</option>
+											<option value="'Times New Roman', serif">Times New Roman</option>
+											<option value="Verdana, sans-serif">Verdana</option>
+											<option value="Georgia, serif">Georgia</option>
+											<option value="'Courier New', monospace">Courier New</option>
+											<option value="'Calibri', sans-serif">Calibri</option>
+											<option value="'Cambria', serif">Cambria</option>
+											<option value="'Tahoma', sans-serif">Tahoma</option>
+											<option value="'Garamond', serif">Garamond</option>
+											<option value="'Segoe UI', sans-serif">Segoe UI</option>
+											<option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+										</select>
+									</div>
+									
+									<div class="mb-3">
+										<div class="form-check">
+											<input class="form-check-input" type="checkbox" id="include-cover-pages" checked>
+											<label class="form-check-label" for="include-cover-pages">
+												Include cover pages
+											</label>
+										</div>
+									</div>
+									
+									<div class="d-grid">
+										<!-- Preview button removed as per requirement -->
+										<button type="button" class="btn btn-success" id="generate-pdf-btn">
+											<i class="bi bi-printer me-1"></i> Generate PDF
+										</button>
+									</div>
+								</form>
+							</div>
+						</div>
+					</div>
                     
                     <div class="col-md-8">
                         <div class="card shadow">
