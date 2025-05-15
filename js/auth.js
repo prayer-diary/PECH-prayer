@@ -991,27 +991,10 @@ function clearLocalAppState() {
     // Example: currentView = null;
 }
 
-// Modified fetchUserProfile function that checks for verification code
+// Modified fetchUserProfile function to prevent profile display during verification
 async function fetchUserProfile() {
     try {
         if (!currentUser) return null;
-        
-        // Check if we already have a profile cached
-        if (userProfile && userProfile.id === currentUser.id) {
-            // If user already has a pending verification, continue the verification process
-            if (userProfile.first_signin_code !== 0 && userProfile.first_signin_code !== 999999) {
-                // Store current user ID for verification process
-                currentUserId = currentUser.id;
-                
-                // Show verification modal if not already in progress
-                if (!verificationInProgress) {
-                    verificationInProgress = true;
-                    openVerificationModal();
-                }
-            }
-            
-            return userProfile;
-        }
         
         // Wait for any token refresh to complete first
         if (tokenRefreshInProgress) {
@@ -1060,8 +1043,10 @@ async function fetchUserProfile() {
             return null;
         }
         
+        // Cache the profile data so we have it for later
         userProfile = data;
         
+        // *** VERIFICATION CHECK ***
         // Check if verification is required (first_signin_code is not 0)
         if (userProfile && userProfile.first_signin_code !== 0) {
             console.log('Verification check: first_signin_code =', userProfile.first_signin_code);
@@ -1072,22 +1057,50 @@ async function fetchUserProfile() {
             // If account is blocked (code 999999)
             if (userProfile.first_signin_code === 999999) {
                 console.log('Account is blocked due to too many failed verification attempts');
-                // Force logout
+                // Show blocked account message and force logout
                 await showBlockedAccountMessage();
                 await logout();
                 return null;
             }
             
-            // Show verification modal for any other code value
+            // If verification is required but not yet started
             if (!verificationInProgress) {
                 console.log('Showing verification modal for first-time login');
                 verificationInProgress = true;
+                
+                // IMPORTANT: Show a temporary loading message in the landing view
+                // This prevents the profile form from showing
+                document.getElementById('landing-view').classList.remove('d-none');
+                document.getElementById('app-views').classList.add('d-none');
+                
+                const statusMessage = document.getElementById('auth-status-message');
+                if (statusMessage) {
+                    statusMessage.innerHTML = `
+                        <div class="alert alert-info mt-5">
+                            <h4 class="alert-heading">Verification Required</h4>
+                            <p>Please complete the email verification process to continue.</p>
+                        </div>
+                    `;
+                }
+                
+                // Show the verification modal
                 openVerificationModal();
-                return userProfile; // Return profile but verification will interrupt the login flow
+                
+                // CRITICAL: Return null to prevent the rest of the login flow
+                // This ensures the user doesn't see the profile form while verification is pending
+                return null;
+            }
+            
+            // If verification is in progress, also return null to prevent profile display
+            if (verificationInProgress) {
+                return null;
             }
         }
         
-        return data;
+        // If we get here, either:
+        // 1. No verification was required (first_signin_code was 0)
+        // 2. Verification has been successfully completed (verificationInProgress was reset)
+        return userProfile;
     } catch (error) {
         console.error('Error fetching user profile:', error);
         return null;
@@ -1221,7 +1234,7 @@ function openVerificationModal() {
     }, 500);
 }
 
-// Function to handle verification form submission
+// Modified verification handler function to update the login flow after verification
 async function handleVerification(e) {
     e.preventDefault();
     
@@ -1285,20 +1298,13 @@ async function handleVerification(e) {
                 // Reset verification flag
                 verificationInProgress = false;
                 
-                // Proceed with login
+                // IMPORTANT: Update the cached userProfile to reflect verification
                 if (userProfile) {
-                    // Update userProfile.first_signin_code to 0 to reflect the verification
                     userProfile.first_signin_code = 0;
-                    showLoggedInState();
-                } else {
-                    // If userProfile somehow got lost, reload it
-                    fetchUserProfile().then(profile => {
-                        if (profile) {
-                            userProfile = profile;
-                            showLoggedInState();
-                        }
-                    });
                 }
+                
+                // Manually call showLoggedInState to proceed with the login flow
+                showLoggedInState();
             }, 2000);
         } else {
             console.log('Verification code does not match, decrementing attempts...');
