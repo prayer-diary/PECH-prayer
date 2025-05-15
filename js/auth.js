@@ -1162,7 +1162,7 @@ function openVerificationModal() {
     
     // Set up event listeners
     const form = document.getElementById('verification-form');
-    const cancelBtn = document.getElementById('cancel-verification');
+
     
     // Remove existing event listeners to prevent duplicates
     const newForm = form.cloneNode(true);
@@ -1171,28 +1171,7 @@ function openVerificationModal() {
     // Add new form submission listener
     newForm.addEventListener('submit', handleVerification);
     
-    if (cancelBtn) {
-        // Replace with new button to clear event listeners
-        const newCancelBtn = cancelBtn.cloneNode(true);
-        cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
-        
-        // Add cancel button event listener
-        newCancelBtn.addEventListener('click', async () => {
-            console.log('Verification cancelled, logging out...');
-            // Hide modal
-            modal.hide();
-            // Reset verification state
-            verificationInProgress = false;
-            // Force logout
-            await logout();
-            // Show message
-            showNotification(
-                'Verification Required', 
-                'You need to verify your email address before using the app. Please check your email for the verification code.',
-                'warning'
-            );
-        });
-    }
+
     
     // Focus on the verification code input
     setTimeout(() => {
