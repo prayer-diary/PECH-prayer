@@ -228,7 +228,7 @@ async function generatePreview() {
                                 font-size: 14pt;
                                 font-weight: bold;
                                 margin: 0;
-                                color: #483D8B;
+                                color: #000;
                                 font-family: ${fontFamily} !important;
                             }
                             .print-card-body {
@@ -286,7 +286,7 @@ async function generatePreview() {
                                 justify-content: center;
                                 height: 100%;
                                 text-align: center;
-                                border: 10px solid #000;
+                                border: 10px solid #e0e0e0;
                                 border-radius: 10mm;
                                 padding: 20mm;
                                 box-sizing: border-box;
@@ -300,11 +300,12 @@ async function generatePreview() {
                                 font-size: 24pt;
                                 font-weight: bold;
                                 margin-bottom: 5mm;
-                                color: #483D8B;
+                                color: #000;
                             }
                             .cover-church-name {
                                 font-size: 18pt;
                                 margin-bottom: 10mm;
+                                color: #000;
                             }
                         </style>
                         <script>
@@ -511,7 +512,7 @@ async function generatePDF() {
                         font-size: 14pt;
                         font-weight: bold;
                         margin: 0;
-                        color: #483D8B;
+                        color: #000;
                         font-family: ${fontFamily} !important;
                     }
                     .print-card-body {
@@ -569,7 +570,7 @@ async function generatePDF() {
                         justify-content: center;
                         height: 100%;
                         text-align: center;
-                        border: 10px solid #000;
+                        border: 10px solid #e0e0e0;
                         border-radius: 10mm;
                         padding: 20mm;
                         box-sizing: border-box;
@@ -583,11 +584,12 @@ async function generatePDF() {
                         font-size: 24pt;
                         font-weight: bold;
                         margin-bottom: 5mm;
-                        color: #483D8B;
+                        color: #000;
                     }
                     .cover-church-name {
                         font-size: 18pt;
                         margin-bottom: 10mm;
+                        color: #000;
                     }
                 </style>
                 <script>
@@ -814,9 +816,9 @@ function generatePrintHTML(prayerCards, includeCover = true) {
         html += `
         <div class="print-page">
             <div class="cover-page">
+                <h2 class="cover-church-name">Pelsall Evangelical Church</h2>
                 <img src="img/logo.png" class="cover-logo" alt="Pelsall Evangelical Church Logo">
                 <h1 class="cover-title">Prayer Diary</h1>
-                <h2 class="cover-church-name">Pelsall Evangelical Church</h2>
             </div>
         </div>
         `;
