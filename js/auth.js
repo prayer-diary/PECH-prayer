@@ -10,9 +10,11 @@ let tokenRefreshInProgress = false;
 let currentUserId = null;
 let verificationAttempts = 5;
 let verificationInProgress = false;
+let pendingVerification = false; // New flag to track verification status across functions
 
 // Initialize auth on load
 document.addEventListener('DOMContentLoaded', initAuth);
+
 
 // Check if we should refresh the token based on time elapsed
 function shouldRefreshToken() {
@@ -58,10 +60,13 @@ async function getSessionSafely() {
     }
 }
 
-// Init auth
+// Modify the existing initAuth function to include verification system initialization
 async function initAuth() {
     try {
         console.log("Initializing authentication...");
+        
+        // Initialize verification system
+        initVerificationSystem();
         
         // Check if we should restore functionality
         if (window.restoreAuthFunctionality !== true) {
@@ -991,10 +996,15 @@ function clearLocalAppState() {
     // Example: currentView = null;
 }
 
-// Modified fetchUserProfile function to prevent profile display during verification
+// Modified fetchUserProfile to just get the user profile without initiating verification
 async function fetchUserProfile() {
     try {
         if (!currentUser) return null;
+        
+        // Check if we already have a profile cached
+        if (userProfile && userProfile.id === currentUser.id) {
+            return userProfile;
+        }
         
         // Wait for any token refresh to complete first
         if (tokenRefreshInProgress) {
@@ -1043,69 +1053,28 @@ async function fetchUserProfile() {
             return null;
         }
         
-        // Cache the profile data so we have it for later
         userProfile = data;
         
-        // *** VERIFICATION CHECK ***
-        // Check if verification is required (first_signin_code is not 0)
-        if (userProfile && userProfile.first_signin_code !== 0) {
-            console.log('Verification check: first_signin_code =', userProfile.first_signin_code);
-            
-            // Store current user ID for verification process
+        // Check if this is a blocked account (code 999999)
+        if (userProfile && userProfile.first_signin_code === 999999) {
+            console.log('Account is blocked due to too many failed verification attempts');
+            // Store current user ID for blocked account message
             currentUserId = currentUser.id;
-            
-            // If account is blocked (code 999999)
-            if (userProfile.first_signin_code === 999999) {
-                console.log('Account is blocked due to too many failed verification attempts');
-                // Show blocked account message and force logout
+            // Show blocked account message and force logout
+            setTimeout(async () => {
                 await showBlockedAccountMessage();
                 await logout();
-                return null;
-            }
-            
-            // If verification is required but not yet started
-            if (!verificationInProgress) {
-                console.log('Showing verification modal for first-time login');
-                verificationInProgress = true;
-                
-                // IMPORTANT: Show a temporary loading message in the landing view
-                // This prevents the profile form from showing
-                document.getElementById('landing-view').classList.remove('d-none');
-                document.getElementById('app-views').classList.add('d-none');
-                
-                const statusMessage = document.getElementById('auth-status-message');
-                if (statusMessage) {
-                    statusMessage.innerHTML = `
-                        <div class="alert alert-info mt-5">
-                            <h4 class="alert-heading">Verification Required</h4>
-                            <p>Please complete the email verification process to continue.</p>
-                        </div>
-                    `;
-                }
-                
-                // Show the verification modal
-                openVerificationModal();
-                
-                // CRITICAL: Return null to prevent the rest of the login flow
-                // This ensures the user doesn't see the profile form while verification is pending
-                return null;
-            }
-            
-            // If verification is in progress, also return null to prevent profile display
-            if (verificationInProgress) {
-                return null;
-            }
+            }, 100);
+            return null;
         }
         
-        // If we get here, either:
-        // 1. No verification was required (first_signin_code was 0)
-        // 2. Verification has been successfully completed (verificationInProgress was reset)
-        return userProfile;
+        return data;
     } catch (error) {
         console.error('Error fetching user profile:', error);
         return null;
     }
 }
+
 // Show blocked account message
 async function showBlockedAccountMessage() {
     // Create and show a custom modal for blocked accounts
@@ -1234,7 +1203,7 @@ function openVerificationModal() {
     }, 500);
 }
 
-// Modified verification handler function to update the login flow after verification
+// Modified handleVerification function to properly restart login flow
 async function handleVerification(e) {
     e.preventDefault();
     
@@ -1290,20 +1259,23 @@ async function handleVerification(e) {
             // Hide form to prevent further submissions
             document.getElementById('verification-form').classList.add('d-none');
             
+            // Update the cached profile to reflect verification
+            if (userProfile) {
+                userProfile.first_signin_code = 0;
+            }
+            
+            // Reset verification flags
+            pendingVerification = false;
+            
             // Hide modal after a delay
             setTimeout(() => {
                 const modal = bootstrap.Modal.getInstance(document.getElementById('verification-code-modal'));
                 if (modal) modal.hide();
                 
-                // Reset verification flag
+                // Reset verification in progress flag
                 verificationInProgress = false;
                 
-                // IMPORTANT: Update the cached userProfile to reflect verification
-                if (userProfile) {
-                    userProfile.first_signin_code = 0;
-                }
-                
-                // Manually call showLoggedInState to proceed with the login flow
+                // Restart the login flow from the beginning
                 showLoggedInState();
             }, 2000);
         } else {
@@ -1344,8 +1316,9 @@ async function handleVerification(e) {
                     const modal = bootstrap.Modal.getInstance(document.getElementById('verification-code-modal'));
                     if (modal) modal.hide();
                     
-                    // Reset verification flag
+                    // Reset verification flags
                     verificationInProgress = false;
+                    pendingVerification = false;
                     
                     // Show blocked account message
                     await showBlockedAccountMessage();
@@ -1378,9 +1351,9 @@ async function handleVerification(e) {
     }
 }
 
-// Update user interface for logged in state
+// Modification to showLoggedInState function to check for verification needs first
 function showLoggedInState() {
-    // Check if user profile exists and is approved
+    // Check if user profile exists
     if (!userProfile) {
         console.error("No user profile found after login");
         showNotification('Error', 'Could not load your user profile. Please contact support.');
@@ -1388,10 +1361,55 @@ function showLoggedInState() {
         return;
     }
     
-    // Dispatch a custom event to notify other components about login state change
-    document.dispatchEvent(new CustomEvent('login-state-changed', { detail: { loggedIn: true }}));
+    // *** VERIFICATION CHECK - CRITICAL ADDITION ***
+    // Check for pending verification before showing any UI
+    if (userProfile.first_signin_code !== 0 && userProfile.first_signin_code !== 999999) {
+        console.log("First-time verification required before showing logged-in state");
+        
+        // Set flag to prevent normal login flow
+        pendingVerification = true;
+        
+        // Store current user ID for verification process
+        currentUserId = currentUser.id;
+        
+        // Show landing view with verification message
+        document.getElementById('landing-view').classList.remove('d-none');
+        document.getElementById('app-views').classList.add('d-none');
+        
+        // Show a status message
+        const statusMessage = document.getElementById('auth-status-message');
+        if (statusMessage) {
+            statusMessage.innerHTML = `
+                <div class="alert alert-info mt-5">
+                    <h4 class="alert-heading">Email Verification Required</h4>
+                    <p>For security purposes, you need to verify your email address before continuing.</p>
+                    <p>Please check your email for a verification code and enter it in the verification screen.</p>
+                </div>
+            `;
+        }
+        
+        // Make sure all navs and other UI elements are disabled
+        document.querySelectorAll('.nav-link, .navbar-brand').forEach(link => {
+            link.classList.add('disabled');
+            link.style.pointerEvents = 'none';
+        });
+        
+        // Hide logged-in UI elements
+        document.querySelectorAll('.logged-in').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('.editor-only').forEach(el => el.classList.add('hidden'));
+        
+        // If not already showing the verification modal, show it
+        if (!verificationInProgress) {
+            verificationInProgress = true;
+            openVerificationModal();
+        }
+        
+        // Important: Return early to prevent the rest of the function from executing
+        return;
+    }
     
-    // Check approval status first
+    // Check approval status only after verification is confirmed
     if (userProfile.approval_state !== 'Approved') {
         // User is logged in but not approved - show pending screen and prevent navigation
         document.querySelectorAll('.logged-out').forEach(el => el.classList.add('hidden'));
@@ -1427,6 +1445,8 @@ function showLoggedInState() {
         
         return;
     }
+    
+    // *** REGULAR LOGIN FLOW - Only reaches here if verified and approved ***
     
     // User is approved - show normal UI
     document.querySelectorAll('.logged-out').forEach(el => el.classList.add('hidden'));
@@ -2154,3 +2174,48 @@ function hasPermission(permission) {
             return false;
     }
 }
+
+// Function to initialize verification system - add this instead of using a separate event listener
+function initVerificationSystem() {
+    console.log("Initializing verification system...");
+    
+    // Listen for login state changes to trigger verification check if needed
+    document.addEventListener('login-state-changed', function(event) {
+        console.log("Login state changed event received in verification system");
+        
+        // If user is logged in and we have a userProfile that needs verification
+        if (event.detail && event.detail.loggedIn && userProfile) {
+            console.log("Checking if verification is needed:", userProfile.first_signin_code);
+            
+            // Check for verification need outside the normal flow
+            if (userProfile.first_signin_code !== 0 && userProfile.first_signin_code !== 999999) {
+                console.log("Verification needed, updating UI state...");
+                
+                // Set verification flags
+                pendingVerification = true;
+                currentUserId = currentUser.id;
+                
+                // Delay a bit to let other UI settle
+                setTimeout(() => {
+                    // Force verification UI to be visible and disable app access
+                    document.getElementById('landing-view').classList.remove('d-none');
+                    document.getElementById('app-views').classList.add('d-none');
+                    
+                    // Ensure all navigation is disabled
+                    document.querySelectorAll('.nav-link, .navbar-brand').forEach(link => {
+                        link.classList.add('disabled');
+                        link.style.pointerEvents = 'none';
+                    });
+                    
+                    // Show verification modal if not already showing
+                    if (!verificationInProgress) {
+                        verificationInProgress = true;
+                        openVerificationModal();
+                    }
+                }, 300);
+            }
+        }
+    });
+}
+
+
