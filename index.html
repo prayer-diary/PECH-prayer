@@ -1120,6 +1120,49 @@
     </div>
 
     <!-- Modals -->
+	<!-- Verification Code Modal -->
+	<div class="modal fade" id="verification-code-modal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="verification-code-title" aria-hidden="true">
+		<div class="modal-dialog modal-dialog-centered">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="verification-code-title">Email Verification Required</h5>
+					<!-- No close button to force verification -->
+				</div>
+				<div class="modal-body">
+					<div id="verification-error" class="alert alert-danger d-none">
+						<p class="mb-0">Error message will appear here</p>
+					</div>
+					<div id="verification-success" class="alert alert-success d-none">
+						<p class="mb-0">Verification successful! Proceeding to login...</p>
+					</div>
+					<form id="verification-form">
+						<div class="text-center mb-4">
+							<div class="verification-icon mb-3">
+								<i class="bi bi-shield-lock fs-1 text-primary"></i>
+							</div>
+							<p>For security purposes, please enter the 6-digit verification code that was sent to your email when your account was approved.</p>
+						</div>
+						
+						<div class="mb-4">
+							<label for="verification-code" class="form-label">Verification Code <span class="text-danger">*</span></label>
+							<input type="text" class="form-control form-control-lg text-center" id="verification-code" 
+								   placeholder="Enter 6-digit code" maxlength="6" inputmode="numeric" pattern="[0-9]*" required>
+							<div class="form-text">This is a one-time verification to confirm your email address.</div>
+						</div>
+						
+						<div id="attempts-info" class="mb-3">
+							<p class="text-muted small">Remaining attempts: <span id="attempts-remaining">5</span></p>
+						</div>
+						
+						<div class="d-grid gap-2">
+							<button type="submit" class="btn btn-primary" id="verify-code-submit">Verify Code</button>
+							<button type="button" class="btn btn-outline-secondary" id="cancel-verification">Cancel</button>
+						</div>
+					</form>
+				</div>
+			</div>
+		</div>
+	</div>
     <!-- Delete Prayer Update Confirmation Modal -->
     <div class="modal fade" id="delete-update-confirm-modal" tabindex="-1" aria-labelledby="delete-update-confirm-title" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">

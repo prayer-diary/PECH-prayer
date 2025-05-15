@@ -6,6 +6,10 @@ let userProfile = null;
 let lastTokenRefresh = Date.now();
 const MIN_REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes minimum between refreshes
 let tokenRefreshInProgress = false;
+// Global variables for verification
+let currentUserId = null;
+let verificationAttempts = 5;
+let verificationInProgress = false;
 
 // Initialize auth on load
 document.addEventListener('DOMContentLoaded', initAuth);
@@ -987,14 +991,25 @@ function clearLocalAppState() {
     // Example: currentView = null;
 }
 
-// Fetch current user's profile with retry mechanism
+// Modified fetchUserProfile function that checks for verification code
 async function fetchUserProfile() {
     try {
         if (!currentUser) return null;
         
         // Check if we already have a profile cached
         if (userProfile && userProfile.id === currentUser.id) {
-            console.log('Using cached user profile data');
+            // If user already has a pending verification, continue the verification process
+            if (userProfile.first_signin_code !== 0 && userProfile.first_signin_code !== 999999) {
+                // Store current user ID for verification process
+                currentUserId = currentUser.id;
+                
+                // Show verification modal if not already in progress
+                if (!verificationInProgress) {
+                    verificationInProgress = true;
+                    openVerificationModal();
+                }
+            }
+            
             return userProfile;
         }
         
@@ -1046,10 +1061,314 @@ async function fetchUserProfile() {
         }
         
         userProfile = data;
+        
+        // Check if verification is required (first_signin_code is not 0)
+        if (userProfile && userProfile.first_signin_code !== 0) {
+            console.log('Verification check: first_signin_code =', userProfile.first_signin_code);
+            
+            // Store current user ID for verification process
+            currentUserId = currentUser.id;
+            
+            // If account is blocked (code 999999)
+            if (userProfile.first_signin_code === 999999) {
+                console.log('Account is blocked due to too many failed verification attempts');
+                // Force logout
+                await showBlockedAccountMessage();
+                await logout();
+                return null;
+            }
+            
+            // Show verification modal for any other code value
+            if (!verificationInProgress) {
+                console.log('Showing verification modal for first-time login');
+                verificationInProgress = true;
+                openVerificationModal();
+                return userProfile; // Return profile but verification will interrupt the login flow
+            }
+        }
+        
         return data;
     } catch (error) {
         console.error('Error fetching user profile:', error);
         return null;
+    }
+}
+// Show blocked account message
+async function showBlockedAccountMessage() {
+    // Create and show a custom modal for blocked accounts
+    const modalHTML = `
+        <div class="modal fade" id="blocked-account-modal" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title text-danger">Account Blocked</h5>
+                    </div>
+                    <div class="modal-body text-center">
+                        <div class="blocked-account-icon">
+                            <i class="bi bi-x-octagon"></i>
+                        </div>
+                        <h4 class="mb-3">Your account has been blocked</h4>
+                        <p>Due to too many failed verification attempts, your account has been blocked for security reasons.</p>
+                        <p>Please contact your administrator to unlock your account.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" id="blocked-account-close">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Add the modal to the DOM if it doesn't exist
+    if (!document.getElementById('blocked-account-modal')) {
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = modalHTML;
+        document.body.appendChild(tempDiv.firstElementChild);
+    }
+    
+    // Show the modal
+    const modal = new bootstrap.Modal(document.getElementById('blocked-account-modal'));
+    modal.show();
+    
+    // Add event listener to close button
+    document.getElementById('blocked-account-close').addEventListener('click', () => {
+        modal.hide();
+        // Remove the modal from DOM after hiding
+        setTimeout(() => {
+            const modalElement = document.getElementById('blocked-account-modal');
+            if (modalElement) {
+                modalElement.remove();
+            }
+        }, 500);
+    });
+    
+    // Return a promise that resolves when the modal is closed
+    return new Promise(resolve => {
+        document.getElementById('blocked-account-close').addEventListener('click', resolve);
+    });
+}
+
+// Function to open the verification modal
+function openVerificationModal() {
+    // Reset verification attempts
+    verificationAttempts = 5;
+    document.getElementById('attempts-remaining').textContent = verificationAttempts;
+    
+    // Clear previous inputs and messages
+    document.getElementById('verification-code').value = '';
+    document.getElementById('verification-error').classList.add('d-none');
+    document.getElementById('verification-success').classList.add('d-none');
+    
+    // Make sure form is visible (in case it was hidden after success)
+    document.getElementById('verification-form').classList.remove('d-none');
+    
+    // Initialize the modal
+    const modalElement = document.getElementById('verification-code-modal');
+    if (!modalElement) {
+        console.error("Verification modal element not found");
+        return;
+    }
+    
+    // Make sure modal has static backdrop to prevent closing on outside click
+    modalElement.setAttribute('data-bs-backdrop', 'static');
+    
+    // Create new modal instance
+    const modal = new bootstrap.Modal(modalElement);
+    
+    // Show the modal
+    modal.show();
+    
+    // Set up event listeners
+    const form = document.getElementById('verification-form');
+    const cancelBtn = document.getElementById('cancel-verification');
+    
+    // Remove existing event listeners to prevent duplicates
+    const newForm = form.cloneNode(true);
+    form.parentNode.replaceChild(newForm, form);
+    
+    // Add new form submission listener
+    newForm.addEventListener('submit', handleVerification);
+    
+    if (cancelBtn) {
+        // Replace with new button to clear event listeners
+        const newCancelBtn = cancelBtn.cloneNode(true);
+        cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+        
+        // Add cancel button event listener
+        newCancelBtn.addEventListener('click', async () => {
+            console.log('Verification cancelled, logging out...');
+            // Hide modal
+            modal.hide();
+            // Reset verification state
+            verificationInProgress = false;
+            // Force logout
+            await logout();
+            // Show message
+            showNotification(
+                'Verification Required', 
+                'You need to verify your email address before using the app. Please check your email for the verification code.',
+                'warning'
+            );
+        });
+    }
+    
+    // Focus on the verification code input
+    setTimeout(() => {
+        const codeInput = document.getElementById('verification-code');
+        if (codeInput) {
+            codeInput.focus();
+        }
+    }, 500);
+}
+
+// Function to handle verification form submission
+async function handleVerification(e) {
+    e.preventDefault();
+    
+    const codeInput = document.getElementById('verification-code');
+    const errorElement = document.getElementById('verification-error');
+    const successElement = document.getElementById('verification-success');
+    const submitBtn = document.getElementById('verify-code-submit');
+    const attemptsElement = document.getElementById('attempts-remaining');
+    
+    // Get the entered code
+    const enteredCode = codeInput.value.trim();
+    
+    // Basic validation - must be 6 digits
+    if (!enteredCode || enteredCode.length !== 6 || !/^\d+$/.test(enteredCode)) {
+        errorElement.querySelector('p').textContent = 'Please enter a valid 6-digit code.';
+        errorElement.classList.remove('d-none');
+        return;
+    }
+    
+    // Show loading state
+    const originalText = submitBtn.textContent;
+    submitBtn.textContent = 'Verifying...';
+    submitBtn.disabled = true;
+    
+    try {
+        // Get the actual verification code from the database
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('first_signin_code')
+            .eq('id', currentUserId)
+            .single();
+            
+        if (error) throw error;
+        
+        const actualCode = data.first_signin_code;
+        
+        // Check if code matches
+        if (parseInt(enteredCode) === actualCode) {
+            console.log('Verification code matches, updating profile...');
+            
+            // Code matches - update user profile to mark as verified
+            const { error: updateError } = await supabase
+                .from('profiles')
+                .update({ first_signin_code: 0 }) // 0 means verified
+                .eq('id', currentUserId);
+                
+            if (updateError) throw updateError;
+            
+            // Show success message
+            errorElement.classList.add('d-none');
+            successElement.classList.remove('d-none');
+            
+            // Hide form to prevent further submissions
+            document.getElementById('verification-form').classList.add('d-none');
+            
+            // Hide modal after a delay
+            setTimeout(() => {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('verification-code-modal'));
+                if (modal) modal.hide();
+                
+                // Reset verification flag
+                verificationInProgress = false;
+                
+                // Proceed with login
+                if (userProfile) {
+                    // Update userProfile.first_signin_code to 0 to reflect the verification
+                    userProfile.first_signin_code = 0;
+                    showLoggedInState();
+                } else {
+                    // If userProfile somehow got lost, reload it
+                    fetchUserProfile().then(profile => {
+                        if (profile) {
+                            userProfile = profile;
+                            showLoggedInState();
+                        }
+                    });
+                }
+            }, 2000);
+        } else {
+            console.log('Verification code does not match, decrementing attempts...');
+            
+            // Add shake animation to the code input
+            codeInput.classList.add('shake');
+            setTimeout(() => {
+                codeInput.classList.remove('shake');
+            }, 600);
+            
+            // Code doesn't match - decrement attempt counter
+            verificationAttempts--;
+            attemptsElement.textContent = verificationAttempts;
+            
+            if (verificationAttempts <= 0) {
+                console.log('Too many failed attempts, blocking account...');
+                
+                // Too many failed attempts - block the account
+                const { error: blockError } = await supabase
+                    .from('profiles')
+                    .update({ first_signin_code: 999999 }) // 999999 means blocked
+                    .eq('id', currentUserId);
+                    
+                if (blockError) throw blockError;
+                
+                // Show error and force logout
+                errorElement.querySelector('p').textContent = 'Too many failed attempts. Your account has been blocked for security reasons. Please contact your administrator.';
+                errorElement.classList.remove('d-none');
+                
+                // If userProfile exists, update it to reflect the blocked state
+                if (userProfile) {
+                    userProfile.first_signin_code = 999999;
+                }
+                
+                // Hide modal and log out after a delay
+                setTimeout(async () => {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('verification-code-modal'));
+                    if (modal) modal.hide();
+                    
+                    // Reset verification flag
+                    verificationInProgress = false;
+                    
+                    // Show blocked account message
+                    await showBlockedAccountMessage();
+                    
+                    // Log out the user
+                    await logout();
+                }, 3000);
+            } else {
+                // Still have attempts left
+                errorElement.querySelector('p').textContent = `Incorrect code. Please try again. You have ${verificationAttempts} attempt${verificationAttempts !== 1 ? 's' : ''} remaining.`;
+                errorElement.classList.remove('d-none');
+                
+                // Enable button again
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+                
+                // Clear input and focus
+                codeInput.value = '';
+                codeInput.focus();
+            }
+        }
+    } catch (error) {
+        console.error('Error verifying code:', error);
+        errorElement.querySelector('p').textContent = `Verification error: ${error.message}`;
+        errorElement.classList.remove('d-none');
+        
+        // Restore button state
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
     }
 }
 

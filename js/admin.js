@@ -399,17 +399,34 @@ async function saveUserPermissions() {
     }
 }
 
-// Update user approval state
+// Function to generate a random 6-digit verification code
+function generateVerificationCode() {
+    // Generate a random number between 100000 and 999999 (6 digits)
+    return Math.floor(100000 + Math.random() * 900000);
+}
+
+// Modified updateUserApproval function that adds verification code
 async function updateUserApproval(userId, state) {
     console.log(`Updating user ${userId} to state: ${state}`);
     
     try {
-        // Update user profile
+        // Generate verification code if approving a user
+        let verificationCode = 0;
+        let updateData = { approval_state: state };
+        
+        if (state === 'Approved') {
+            // Generate a 6-digit verification code
+            verificationCode = generateVerificationCode();
+            console.log(`Generated verification code ${verificationCode} for user ${userId}`);
+            
+            // Add the verification code to the update data
+            updateData.first_signin_code = verificationCode;
+        }
+        
+        // Update user profile with verification code if approving
         const { data, error } = await supabase
             .from('profiles')
-            .update({
-                approval_state: state
-            })
+            .update(updateData)
             .eq('id', userId)
             .select('full_name, email'); // Get the name and email for notification and email_only_users check
             
@@ -420,8 +437,8 @@ async function updateUserApproval(userId, state) {
         
         // If approving, also send welcome email and check for email_only_users entry
         if (state === 'Approved' && data && data.length > 0) {
-            // Send approval email
-            await sendApprovalEmail(userId);
+            // Send approval email with verification code
+            await sendApprovalEmail(userId, verificationCode);
             
             // Check if user exists in email_only_users table and remove if found
             if (data[0].email) {
@@ -803,30 +820,71 @@ function resetApprovalButton() {
     return "Approval button reset. Please refresh the page to see updated state.";
 }
 
-// Send approval email to user
-async function sendApprovalEmail(userId) {
+// Modified sendApprovalEmail function that includes the verification code
+async function sendApprovalEmail(userId, verificationCode = null) {
     try {
-        // Get user profile data
-        const { data: profileData, error: profileError } = await supabase
+        // Get user data
+        const { data: userData, error: userError } = await supabase
             .from('profiles')
             .select('full_name, email')
             .eq('id', userId)
             .single();
             
-        if (profileError) throw profileError;
+        if (userError) throw userError;
         
-        const name = profileData.full_name || 'Church Member';
-        let email = profileData.email;
+        const name = userData.full_name || 'Church Member';
+        let email = userData.email;
         
         if (!email) {
             throw new Error('Unable to retrieve user email');
         }
         
-        // This will be implemented in notifications.js
-        await sendWelcomeEmail(email, name);
+        // Create HTML email content with verification code if provided
+        let htmlContent = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #483D8B;">Welcome to Prayer Diary!</h2>
+                <p>Dear ${name},</p>
+                
+                <p>Your Prayer Diary account has been approved. You can now log in and use all features of the app.</p>
+        `;
         
+        // Add verification code section if a code was provided
+        if (verificationCode) {
+            htmlContent += `
+                <div style="background-color: #f5f5f5; border-left: 4px solid #483D8B; padding: 15px; margin: 15px 0;">
+                    <p><strong>Important:</strong> For security purposes, you'll need to enter the following verification code the first time you log in:</p>
+                    <h3 style="color: #483D8B; text-align: center; font-size: 24px; letter-spacing: 3px;">${verificationCode}</h3>
+                    <p>This code confirms that you own this email address.</p>
+                </div>
+                
+                <p>Please keep this code secure and do not share it with others.</p>
+            `;
+        }
+        
+        htmlContent += `
+                <div style="margin: 25px 0;">
+                    <a href="${window.location.origin}" 
+                    style="background-color: #483D8B; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">
+                        Open Prayer Diary
+                    </a>
+                </div>
+                
+                <p>Blessings,<br>The Prayer Diary Team</p>
+            </div>
+        `;
+        
+        // Send the email with the verification code
+        await sendEmail({
+            to: email,
+            subject: 'Welcome to Prayer Diary - Your Account is Approved',
+            html: htmlContent
+        });
+        
+        console.log(`Approval email sent to ${email} with verification code: ${verificationCode || 'none'}`);
+        return true;
     } catch (error) {
         console.error('Error sending approval email:', error);
+        return false;
     }
 }
 
