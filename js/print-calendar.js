@@ -138,16 +138,16 @@ async function generatePreview() {
         // Base URL for resolving relative paths
         const baseURL = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
         
-        // Create the preview with only the first page
-        previewContainer.innerHTML = `
-            <div class="alert alert-info mb-3">
-                <strong>Preview:</strong> Showing sample of ${prayerCards.length} prayer cards. 
-                The complete calendar will group cards by day number.
-            </div>
-            <div class="border p-3" style="background-color: #f8f9fa;">
-                <iframe id="preview-iframe" style="width: 100%; height: 500px; border: 1px solid #ddd; transform: scale(0.8); transform-origin: top center;" frameborder="0"></iframe>
-            </div>
-        `;
+		// Create the preview with better sizing
+		previewContainer.innerHTML = `
+			<div class="alert alert-info mb-3">
+				<strong>Preview:</strong> Showing sample of ${prayerCards.length} prayer cards. 
+				The complete calendar will group cards by day number.
+			</div>
+			<div class="border p-2" style="background-color: #f8f9fa; height: calc(80vh - 150px); overflow: hidden;">
+				<iframe id="preview-iframe" style="width: 100%; height: 100%; border: 1px solid #ddd;" frameborder="0"></iframe>
+			</div>
+		`;
         
         // Get selected font family
         const fontFamilySelect = document.getElementById('print-font-family');
