@@ -826,7 +826,19 @@ function generatePrintHTML(prayerCards, includeCover = true) {
     
     let html = '';
     
-    // CHANGE: Add back cover page first (if enabled)
+    // Current date for footer and cover page
+    const today = new Date();
+    const dateStr = today.toLocaleDateString(undefined, { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    });
+    
+    // Get month name and year for cover page
+    const monthName = today.toLocaleString('default', { month: 'long' });
+    const year = today.getFullYear();
+    
+    // FIXED: Add back cover first
     if (includeCover) {
         html += `
         <div class="print-page">
@@ -837,17 +849,19 @@ function generatePrintHTML(prayerCards, includeCover = true) {
         `;
     }
     
-    // Current date for footer and cover page
-    const today = new Date();
-    const dateStr = today.toLocaleDateString(undefined, { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-    });
-    
-    // CHANGE: Get month name and year for cover page
-    const monthName = today.toLocaleString('default', { month: 'long' });
-    const year = today.getFullYear();
+    // FIXED: Add front cover second so it will print correctly
+    if (includeCover) {
+        html += `
+        <div class="print-page">
+            <div class="cover-page">
+                <h2 class="cover-church-name">Pelsall Evangelical Church</h2>
+                <img src="img/logo.png" class="cover-logo" alt="Pelsall Evangelical Church Logo">
+                <h1 class="cover-title">Prayer Diary</h1>
+                <div class="cover-date">${monthName} ${year}</div>
+            </div>
+        </div>
+        `;
+    }
     
     // Group cards by day (exclude unassigned cards)
     const cardsByDay = {};
@@ -895,7 +909,6 @@ function generatePrintHTML(prayerCards, includeCover = true) {
                     // Default image if none provided
                     const imageUrl = card.profileImage || 'img/placeholder-profile.png';
                     
-                    // CHANGE: Modified layout - only show image and name, no prayer points
                     html += `
                         <div class="print-prayer-card">
                             <div class="print-card-body">
@@ -920,20 +933,6 @@ function generatePrintHTML(prayerCards, includeCover = true) {
                 `;
             }
         });
-    
-    // CHANGE: Add front cover page last (if enabled)
-    if (includeCover) {
-        html += `
-        <div class="print-page">
-            <div class="cover-page">
-                <h2 class="cover-church-name">Pelsall Evangelical Church</h2>
-                <img src="img/logo.png" class="cover-logo" alt="Pelsall Evangelical Church Logo">
-                <h1 class="cover-title">Prayer Diary</h1>
-                <div class="cover-date">${monthName} ${year}</div>
-            </div>
-        </div>
-        `;
-    }
     
     return html;
 }
