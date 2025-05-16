@@ -52,7 +52,7 @@ function initUrgentEditor() {
     // Define custom formats that exclude direct color styling
     const allowedFormats = [
         'bold', 'italic', 'underline', 'strike', 
-        'header', 'list', 'bullet', 'indent', 
+        'header', 'list', 'indent', 
         'link', 'image', 'direction', 'align', 'blockquote'
         // Notice we're NOT including 'color' in the allowed formats
     ];
