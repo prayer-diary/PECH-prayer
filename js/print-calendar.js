@@ -39,14 +39,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Preview button event listener - REMOVED as per requirement
-    // const previewBtn = document.getElementById('preview-pdf-btn');
-    // if (previewBtn) {
-    //     previewBtn.addEventListener('click', function() {
-    //         generatePreview();
-    //     });
-    // }
-    
     // Generate PDF button event listener
     const generateBtn = document.getElementById('generate-pdf-btn');
     if (generateBtn) {
@@ -307,6 +299,11 @@ async function generatePreview() {
                                 margin-bottom: 10mm;
                                 color: #000;
                             }
+                            .cover-date {
+                                font-size: 18pt;
+                                margin-top: 5mm;
+                                color: #333;
+                            }
                         </style>
                         <script>
                             // Fix image loading errors
@@ -518,6 +515,7 @@ async function generatePDF() {
                     .print-card-body {
                         display: flex;
                         font-family: ${fontFamily} !important;
+                        align-items: center;
                     }
                     .print-image-container {
                         margin-right: 5mm;
@@ -590,6 +588,23 @@ async function generatePDF() {
                         font-size: 18pt;
                         margin-bottom: 10mm;
                         color: #000;
+                    }
+                    .cover-date {
+                        font-size: 18pt;
+                        margin-top: 5mm;
+                        color: #333;
+                    }
+                    .back-cover-page {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        height: 100%;
+                        text-align: center;
+                        border: 10px solid #e0e0e0;
+                        border-radius: 10mm;
+                        padding: 20mm;
+                        box-sizing: border-box;
                     }
                 </style>
                 <script>
@@ -811,26 +826,28 @@ function generatePrintHTML(prayerCards, includeCover = true) {
     
     let html = '';
     
-    // Add cover page if enabled
+    // CHANGE: Add back cover page first (if enabled)
     if (includeCover) {
         html += `
         <div class="print-page">
-            <div class="cover-page">
-                <h2 class="cover-church-name">Pelsall Evangelical Church</h2>
+            <div class="back-cover-page">
                 <img src="img/logo.png" class="cover-logo" alt="Pelsall Evangelical Church Logo">
-                <h1 class="cover-title">Prayer Diary</h1>
             </div>
         </div>
         `;
     }
     
-    // Current date for footer
+    // Current date for footer and cover page
     const today = new Date();
     const dateStr = today.toLocaleDateString(undefined, { 
         year: 'numeric', 
         month: 'long', 
         day: 'numeric' 
     });
+    
+    // CHANGE: Get month name and year for cover page
+    const monthName = today.toLocaleString('default', { month: 'long' });
+    const year = today.getFullYear();
     
     // Group cards by day (exclude unassigned cards)
     const cardsByDay = {};
@@ -878,23 +895,7 @@ function generatePrintHTML(prayerCards, includeCover = true) {
                     // Default image if none provided
                     const imageUrl = card.profileImage || 'img/placeholder-profile.png';
                     
-                    // Format prayer points - handle different data structures
-                    let formattedPrayerPoints = '';
-                    if (card.prayerPoints && card.prayerPoints !== 'No prayer points provided.') {
-                        // If content is already HTML, keep it as is
-                        if (card.prayerPoints.includes('<')) {
-                            formattedPrayerPoints = card.prayerPoints;
-                        } else {
-                            // Otherwise format as paragraphs
-                            formattedPrayerPoints = card.prayerPoints
-                                .split('\n')
-                                .filter(line => line.trim())
-                                .map(line => `<p>${line}</p>`)
-                                .join('');
-                        }
-                    }
-                    
-                    // Add the card - revised layout per requirements
+                    // CHANGE: Modified layout - only show image and name, no prayer points
                     html += `
                         <div class="print-prayer-card">
                             <div class="print-card-body">
@@ -904,7 +905,6 @@ function generatePrintHTML(prayerCards, includeCover = true) {
                                 </div>
                                 <div class="print-prayer-points">
                                     <h3 class="print-name">${card.name}</h3>
-                                    ${formattedPrayerPoints || ''}
                                 </div>
                             </div>
                         </div>
@@ -920,6 +920,20 @@ function generatePrintHTML(prayerCards, includeCover = true) {
                 `;
             }
         });
+    
+    // CHANGE: Add front cover page last (if enabled)
+    if (includeCover) {
+        html += `
+        <div class="print-page">
+            <div class="cover-page">
+                <h2 class="cover-church-name">Pelsall Evangelical Church</h2>
+                <img src="img/logo.png" class="cover-logo" alt="Pelsall Evangelical Church Logo">
+                <h1 class="cover-title">Prayer Diary</h1>
+                <div class="cover-date">${monthName} ${year}</div>
+            </div>
+        </div>
+        `;
+    }
     
     return html;
 }
