@@ -97,7 +97,7 @@ async function initPrintCalendarView() {
     generatePreview();
 }
 
-// Generate a preview of the prayer calendar
+// Updated function to fix back cover styling in preview
 async function generatePreview() {
     const previewContainer = document.getElementById('print-preview-container');
     if (!previewContainer) return;
@@ -138,16 +138,16 @@ async function generatePreview() {
         // Base URL for resolving relative paths
         const baseURL = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
         
-		// Create the preview with better sizing
-		previewContainer.innerHTML = `
-			<div class="alert alert-info mb-3">
-				<strong>Preview:</strong> Showing sample of ${prayerCards.length} prayer cards. 
-				The complete calendar will group cards by day number.
-			</div>
-			<div class="border p-2" style="background-color: #f8f9fa; height: calc(80vh - 150px); overflow: hidden;">
-				<iframe id="preview-iframe" style="width: 100%; height: 100%; border: 1px solid #ddd;" frameborder="0"></iframe>
-			</div>
-		`;
+        // Create the preview with only the first page
+        previewContainer.innerHTML = `
+            <div class="alert alert-info mb-3">
+                <strong>Preview:</strong> Showing sample of ${prayerCards.length} prayer cards. 
+                The complete calendar will group cards by day number.
+            </div>
+            <div class="border p-2" style="background-color: #f8f9fa; height: calc(80vh - 150px); overflow: hidden;">
+                <iframe id="preview-iframe" style="width: 100%; height: 100%; border: 1px solid #ddd;" frameborder="0"></iframe>
+            </div>
+        `;
         
         // Get selected font family
         const fontFamilySelect = document.getElementById('print-font-family');
@@ -197,6 +197,7 @@ async function generatePreview() {
                                 box-shadow: 0 2px 5px rgba(0,0,0,0.1);
                                 position: relative;
                                 font-family: ${fontFamily} !important;
+                                margin-bottom: 10mm;
                             }
                             .print-prayer-card {
                                 display: flex;
@@ -271,7 +272,7 @@ async function generatePreview() {
                                 font-family: ${fontFamily} !important;
                             }
                             /* Cover page styles */
-                            .cover-page {
+                            .cover-page, .back-cover-page {
                                 display: flex;
                                 flex-direction: column;
                                 align-items: center;
