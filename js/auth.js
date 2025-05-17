@@ -303,7 +303,7 @@ function setupAuthListeners() {
     }
 }
 
-// Enhanced openAuthModal function to prevent background content from showing
+// Open auth modal for login or signup
 function openAuthModal(mode) {
     try {
         // Check global blocking flag first
@@ -350,16 +350,6 @@ function openAuthModal(mode) {
             return;
         }
         
-        // Make sure modal has static backdrop to prevent closing on outside click
-        modalElement.setAttribute('data-bs-backdrop', 'static');
-        
-        // Ensure any previous modal is disposed before creating a new one
-        const existingModal = bootstrap.Modal.getInstance(modalElement);
-        if (existingModal) {
-            existingModal.dispose();
-        }
-        
-        // Create new modal instance
         const modal = new bootstrap.Modal(modalElement);
         
         const title = document.getElementById('auth-modal-title');
@@ -409,6 +399,9 @@ function openAuthModal(mode) {
             if (signupNameInput) signupNameInput.setAttribute('required', '');
             if (confirmPasswordInput) confirmPasswordInput.setAttribute('required', '');
             if (signupHelpText) signupHelpText.classList.remove('d-none');
+            
+            // Let validation function handle the button state
+            // Do not disable by default as it prevents users from submitting even when all fields are filled
         }
         
         // Re-attach event listener for switch link - with null check
@@ -434,25 +427,8 @@ function openAuthModal(mode) {
         validateAuthForm();
         setTimeout(validateAuthForm, 100);
         
-        // Add event listener to the modal to prevent closing by Escape key
-        modalElement.addEventListener('keydown', function(event) {
-            if (event.key === 'Escape') {
-                event.preventDefault();
-                event.stopPropagation();
-                return false;
-            }
-        });
-        
         // Show the modal
         modal.show();
-        
-        // When modal is shown, focus on the email field
-        modalElement.addEventListener('shown.bs.modal', function () {
-            const emailInput = document.getElementById('auth-email');
-            if (emailInput) {
-                emailInput.focus();
-            }
-        });
     } catch (error) {
         console.error("Error in openAuthModal:", error);
         // Fallback for critical error - reload the page
